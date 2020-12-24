@@ -122,7 +122,7 @@ class Board{
         const len = Math.max(Math.abs(vector[0]), Math.abs(vector[1]));
         const unit_vector = vector.map(Math.sign);
 
-        for (let i = 1; i<=len; i++){
+        for (let i = 1; i<len; i++){
             let c = coordSum(c1, coordMul(unit_vector, i));  
             if (c == c2){
                 break;

@@ -233,6 +233,31 @@ class Board{
             }
         }
 
+        if (move.piece.name == "p"){
+            const vector = coordDiff(move.coordinate, move.piece.coordinate);
+
+            let intersect_piece = null;
+            var piece;
+            for (piece of this.pieces[+!this.whose_turn]){
+                if (piece.coordinate.toString() == move.coordinate.toString()){
+                    intersect_piece = piece;
+                }
+            }
+            
+            if (vector[0] == 0){
+                if (intersect_piece != null){
+                    console.log("You are merely a pawn")
+                    return -1;
+                }
+            }
+            else{
+                if (intersect_piece === null){
+                    console.log("Don't cross the line")
+                    return -1;
+                }
+            }
+        }
+
         // move is valid 
         let taken_piece = 0;
 

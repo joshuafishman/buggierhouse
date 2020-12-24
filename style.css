@@ -33,6 +33,17 @@ body, html, #play_screen {
     width:450px;
 }
 
+.piece_counts_other {
+    text-align: center;
+    font-size: 18px;
+    margin: 0 auto;
+    width:295px;
+}
+
+.piece_counts_other img {
+    width:40px;
+}
+
 .clock {
     width:100%;
     text-align: center;

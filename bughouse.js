@@ -166,9 +166,21 @@ class Board{
         if (piece_name=="q"){
             piece = new Queen(to_square, side);
         }
+        if (piece_name=="b"){
+            piece = new Bishop(to_square, side);
+        }
+        if (piece_name=="p"){
+            piece = new Pawn(to_square, side);
+        }
+        if (piece_name=="k"){
+            piece = new Knight(to_square, side);
+        }
+        if (piece_name=="r"){
+            piece = new Rook(to_square, side);
+        }
         console.log(piece);
         
-        return this._doMove(new Move(piece, to_square, false));
+        return this._doMove(new Move(piece, to_square, true));
     }
 
     _doMove(move){
@@ -221,15 +233,25 @@ class Board{
             }
         }
 
-        move.piece.coordinate = move.coordinate;
-        let taken_piece = new Piece();
-        for (let i = 0; i<this.pieces[+!this.whose_turn].length; i++){
-            const piece = this.pieces[+!this.whose_turn][i];
-            if (piece.coordinate.toString() == move.coordinate.toString()){
-                taken_piece = piece;
-                this.pieces[+!this.whose_turn].splice(i);
-                i--;
+        // move is valid 
+        let taken_piece = 0;
+
+        if (!move.isNew){
+            move.piece.coordinate = move.coordinate;
+            for (let i = 0; i<this.pieces[+!this.whose_turn].length; i++){
+                const piece = this.pieces[+!this.whose_turn][i];
+                if (piece.coordinate.toString() == move.coordinate.toString()){
+                    taken_piece = piece.name;
+                    this.pieces[+!this.whose_turn].splice(i);
+                    i--;
+                }
             }
+        }
+        else{
+            this.pieces[this.whose_turn].push(move.piece);
+
+            const extra_idx = Board.bug_order.search(move.piece.name);
+            this.extra_pieces[this.whose_turn][extra_idx]--;
         }
                 
         this.history.push(this.serialize());
@@ -271,8 +293,6 @@ class Bughouse{
         let out = null;
         if(from_square == "spare"){
             const piece_name = piece_type[1].toLowerCase();
-            const extra_idx = Board.bug_order.search(piece_name);
-            board.extra_pieces[side][extra_idx]--;
             out = board.doBug(side, piece_name, this.parse_square(to_square));
         }
 
@@ -284,13 +304,12 @@ class Bughouse{
             return false;
         }
 
-        if (out.name != ""){
-            const extra_idx = Board.bug_order.search(out.name);
+        if (out != 0){
+            const extra_idx = Board.bug_order.search(out);
             if (extra_idx != -1){
-                board.extra_pieces[side][extra_idx]--;
+                board.extra_pieces[side][extra_idx]++;
             }
         }
-
 
         return true;   
     }

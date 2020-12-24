@@ -24,8 +24,13 @@ function update_chess_clock() {
         window.clocks[1] -= delta;
     }
 
-    window.time_mine.innerText = `${Math.floor(window.clocks[0]/60)}:${(window.clocks[1]%60).toFixed(1)}`;
-        
+    if (window.clocks[1] <= 0) {
+        we_won_the_game();
+        return;
+    }
+
+    window.time_mine.innerText = `${Math.floor(window.clocks[0]/60)}:${(window.clocks[0]%60).toFixed(1)}`;
+    window.time_theirs.innerText = `${Math.floor(window.clocks[1]/60)}:${(window.clocks[1]%60).toFixed(1)}`;
 }
 
 function create_screen() {
@@ -49,7 +54,6 @@ function token_screen(token) {
     document.getElementById('create_screen').style = 'display:none';     
     document.getElementById('token_screen').style = 'display:block';   
 }
-
 
 function copy_token(dom_id) {
     if (!dom_id) {
@@ -84,6 +88,7 @@ function handle_message_host(data, player) {
             // Was opponents move, start my chess clock and stop my opponents
             window.clock_times[0] = new Date().getTime();
             window.clock_times[1] = null;
+            window.clocks[1] += window.inc_param;
         }
 
         // Replicate (but not to the source)
@@ -91,6 +96,18 @@ function handle_message_host(data, player) {
             if (i == player) continue;
             window.host_peers[i].send(data);
         }
+    } else if (data.startsWith('GAMEOVER')) {
+        const msg = data.substring(9);
+
+        // Replicate (but not to the source)
+        for (let i=0; i<4; i++) {
+            if (i == player) continue;
+            window.host_peers[i].send(data);
+        }
+
+        clearInterval(window.chessInterval);
+        alert(`Game over!\n${msg}`);
+        start_game();
     } else {
         console.log(`[host] host data: ${data}`);
     }
@@ -126,8 +143,15 @@ function handle_message_player(data) {
             // Was opponents move, start my chess clock and stop my opponents
             window.clock_times[0] = new Date().getTime();
             window.clock_times[1] = null;
+            window.clocks[1] += window.inc_param;
         }
 
+    } else if (data.startsWith('GAMEOVER')) {
+        const msg = data.substring(9);
+
+        clearInterval(window.chessInterval);
+        alert(`Game over!\n${msg}`);
+        start_game();
     } else {
         console.log(`[player] player data: ${data}`);
     }
@@ -140,6 +164,18 @@ function host_broadcast(data) {
     }
 }
 
+function we_won_the_game() {
+    // Game is over, we won!
+    const victory_message = prompt('You won! Type your victory message below.');
+    if (is_host()) {
+        host_broadcast(`GAMEOVER_${victory_message}`);
+    } else {
+        window.player_peer.send(`GAMEOVER_${victory_message}`);
+    }
+
+    clearInterval(window.chessInterval);
+    start_game();        
+}
 
 function start_game() {
     if (isNaN(window.player) || isNaN(window.pool_param) || isNaN(window.inc_param)) {
@@ -177,8 +213,14 @@ function start_game() {
         onDrop: function(source, target, piece, newPos, oldPos, orientation) {
             const is_valid = window.game.doMove(window.player, source, target, piece);
             
-            if (!is_valid) return false;
+            if (!is_valid) return 'snapback';
 
+            if (window.game.isOver()) {
+                we_won_the_game();
+                return;
+            }
+
+            window.clocks[0] += window.inc_param;
             update_piece_counts(window.game.getBugs());
             
             // Stop my chess clock and start my opponents
@@ -218,6 +260,9 @@ function create_game() {
     window.pool_param = parseFloat(document.getElementById('pool_input').value)*60;
     window.inc_param = parseFloat(document.getElementById('inc_input').value);
     window.player = parseInt(document.getElementById('player_input').value);
+
+    start_game();
+    return;
 
     if (isNaN(window.pool_param) || isNaN(window.inc_param)) {
         alert('Invalid pool or inc');

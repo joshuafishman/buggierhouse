@@ -66,10 +66,13 @@ class Clock{
 }
 
 class Board{
+    static bug_order = "qrbnp"
+    static piece_order = [Queen, Rook, Bishop, Knight, Pawn]
+
     constructor(){
         this.whose_turn = 0;
         this.pieces = this.setup();
-        this.extra_pieces = [[], []]; 
+        this.extra_pieces = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]; 
         this.clocks = [new Clock(600, seconds(), false), new Clock(600, seconds(), true)];
         this.history = [this.serialize()];
     }
@@ -140,7 +143,7 @@ class Board{
     doMove(side, from_square, to_square, clock_after){
         if (side != this.whose_turn){
             console.log("Nice try Mr. Spy");
-            return null;
+            return -1;
         }
 
         var piece;
@@ -154,28 +157,40 @@ class Board{
         return this._doMove(new Move(piece, to_square, false));
     }
 
+    doBug(side, piece_name, to_square, clock_after){
+        if (side != this.whose_turn){
+            console.log("Nice try Mr. Spy");
+            return -1;
+        }
+
+        let piece = new piece_order[bug_order.search(piece_name)]();
+        console.log(piece);
+        
+        return this._doMove(new Move(piece, to_square, false));
+    }
+
     _doMove(move){
         if (move.piece.side != this.whose_turn){
             console.log("Nice try Mr. Spy");
-            return null;
+            return -1;
         } 
 
         var piece;
         for (piece of this.pieces[+this.whose_turn]){
             if (piece.coordinate.toString() == move.coordinate.toString()){
                 console.log("Friendly fire :(");
-                return null;
+                return -1;
             }
         }
 
         if (!move.isNew){
             if (!move.piece.isMoveAllowed(move.coordinate)){
                 console.log("Learn how your pieces move, nitwit");
-                return null;
+                return -1;
             }
             if (move.piece.name != "n" &&  !this.isPathClear(move.piece.coordinate, move.coordinate)){
                 console.log("Try going around next time...");
-                return null;
+                return -1;
             }
         }
 
@@ -184,7 +199,7 @@ class Board{
             for (piece of this.pieces[+!this.whose_turn]){
                 if (piece.coordinate.toString() == move.coordinate.toString()){
                     console.log("Nice try, but that's not how bughouse works");
-                    return null;
+                    return -1;
                 }
             }
         }
@@ -199,7 +214,7 @@ class Board{
             if (piece.coordinate != king_coordinate  && piece.isMoveAllowed(king_coordinate)){
                 if (move.piece.name == "n" ||  this.isPathClear(piece.coordinate, king_coordinate)){
                     console.log("Protect your commander! Semper Fi!");
-                    return null;
+                    return -1;
                 }
             }
         }
@@ -225,6 +240,7 @@ class Board{
         return taken_piece;
     }
     print(){
+        console.log(this.extra_pieces);
         const b = this.serialize();
         let out = ""
         for (let i = 0; i<8; i++){
@@ -241,14 +257,42 @@ class Bughouse{
     }
     doMove(player_id, from_square, to_square, piece_type, clock_after){
         const board_id = Math.sign(player_id % 3);
+        const board = this.boards[board_id]
         const side = Boolean(player_id % 2);
-        return this.boards[board_id].doMove(side, from_square, to_square, clock_after);
+
+        let out = null;
+        if(from_square == "spare"){
+            piece_name = piece_type[1].toLowerCase();
+            extra_idx = Board.bug_order.search(piece_name);
+            board.extra_pieces[side][extra_idx]--;
+            out = board.doBug(side, piece_name, to_square, clock_after);
+        }
+
+        else{
+            out = board.doMove(side, from_square, to_square, clock_after);
+        }
+
+        if (out == -1){
+            return false;
+        }
+
+        extra_idx = Board.bug_order.search(out.name);
+        if (extra_idx != -1){
+            board.extra_pieces[side][extra_idx]--;
+        }
+
+        return true;   
     }
     print(){
         this.boards[0].print();
         this.boards[1].print();
     }
-   // TODO give extra pieces
+    get_bugs(){
+        return[this.boards[0].extra_pieces[0],
+               this.boards[1].extra_pieces[1],
+               this.boards[1].extra_pieces[0],
+               this.boards[0].extra_pieces[1]];
+    }
 }
 
 

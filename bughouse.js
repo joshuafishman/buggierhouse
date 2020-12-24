@@ -67,7 +67,7 @@ class Clock{
 
 class Board{
     static bug_order = "qrbnp"
-    static piece_order = [Queen, Rook, Bishop, Knight, Pawn]
+    // static piece_order = [Queen, Rook, Bishop, Knight, Pawn]
 
     constructor(){
         this.whose_turn = 0;
@@ -163,7 +163,10 @@ class Board{
             return -1;
         }
 
-        let piece = new piece_order[bug_order.search(piece_name)]();
+        let piece = null;
+        if (piece_name=="q"){
+            piece = new Queen(to_square, side);
+        }
         console.log(piece);
         
         return this._doMove(new Move(piece, to_square, false));

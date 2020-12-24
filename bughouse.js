@@ -242,7 +242,7 @@ class Board{
                 const piece = this.pieces[+!this.whose_turn][i];
                 if (piece.coordinate.toString() == move.coordinate.toString()){
                     taken_piece = piece.name;
-                    this.pieces[+!this.whose_turn].splice(i);
+                    console.log(this.pieces[+!this.whose_turn].splice(i, 1));
                     i--;
                 }
             }
@@ -286,8 +286,8 @@ class Bughouse{
     }
 
     doMove(player_id, from_square, to_square, piece_type){
-        const board_id = Math.sign(player_id % 3);
-        const board = this.boards[board_id];
+        const board_id = Boolean(Math.sign(player_id % 3));
+        const board = this.boards[+board_id];
         const side = Boolean(player_id % 2);
 
         let out = null;
@@ -307,7 +307,7 @@ class Bughouse{
         if (out != 0){
             const extra_idx = Board.bug_order.search(out);
             if (extra_idx != -1){
-                board.extra_pieces[side][extra_idx]++;
+                this.boards[+!board_id].extra_pieces[+!side][extra_idx]++;
             }
         }
 

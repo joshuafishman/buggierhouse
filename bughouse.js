@@ -278,6 +278,9 @@ class Bughouse{
 
         return true;   
     }
+    isOver() {
+        return false;
+    }
     print(){
         this.boards[0].print();
         this.boards[1].print();

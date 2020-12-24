@@ -31,11 +31,8 @@
     </div>
 
     <div id="create_1" style="display:none">
-        <p>Host created, please send the URL to all players.</p>
+        <p>Host created. Please send the below URLs to all players, then copy their responses into the fields.</p>
         <div>
-            <p>Token: <input id="token_0"></p>
-            <p>Token: <input id="token_1"></p>
-            <p>Token: <input id="token_2"></p>
         </div>
         <button onclick="start_host()">start game</button>
     </div>
@@ -50,16 +47,7 @@
 <div id="token_screen" style="display:none">
     <h1>buggier house</h1>
 
-    <p>first, select your player:</p>
-
-    <select id="join_player_input">
-        <option value="0" selected>White team 1</option>
-        <option value="1">Black team 1</option>
-        <option value="2">White team 2</option>
-        <option value="3">Black team 2</option>   
-    </select>
-
-    <p>then, copy the below connection token and send it to the host:</p>
+    <p>copy the below connection token and send it to the host:</p>
 
     <div id="connection_token"></div><br />
     <button onclick="copy_token()">copy to clipboard</button>

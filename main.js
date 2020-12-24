@@ -68,6 +68,12 @@ function copy_token(dom_id) {
     $temp.remove();
 }
 
+function drop_piece(board, position, piece) {
+    const pos = board.position();
+    pos[position] = piece;
+    board.position(pos, false);
+}
+
 function handle_message_host(data, message_player) {
     if (typeof data != "string") {
         data = String.fromCharCode.apply(null, data);
@@ -101,9 +107,11 @@ function handle_message_host(data, message_player) {
 
         // update board
         if (message_player == 3 - window.player) {
-            window.my_board.move(`${source}-${target}`);
+            if (source == 'spare') drop_piece(window.my_board, target, piece);
+            else window.my_board.move(`${source}-${target}`);
         } else {
-            window.their_board.move(`${source}-${target}`);
+            if (source == 'spare') drop_piece(window.their_board, target, piece);
+            else window.their_board.move(`${source}-${target}`);
         }
     } else if (data.startsWith('GAMEOVER')) {
         const msg = data.substring(9);
@@ -159,11 +167,13 @@ function handle_message_player(data) {
             window.clocks[1] += window.inc_param;
         }
 
-        // update board        
+        // update board
         if (move_player == 3 - window.player) {
-            window.my_board.move(`${source}-${target}`);
+            if (source == 'spare') drop_piece(window.my_board, target, piece);
+            else window.my_board.move(`${source}-${target}`);
         } else {
-            window.their_board.move(`${source}-${target}`);
+            if (source == 'spare') drop_piece(window.their_board, target, piece);
+            else window.their_board.move(`${source}-${target}`);
         }
     } else if (data.startsWith('GAMEOVER')) {
         const msg = data.substring(9);

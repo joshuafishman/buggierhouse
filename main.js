@@ -1,16 +1,13 @@
 function update_piece_counts(bughouse_counts) {  
-    let our_str = "<td>0</td>";
-    for (let i=0; i<5; i++) {
-        our_str += `<td>${bughouse_counts[window.player][i]}</td>`;
-    }
+    for (let i=0; i<4; i++) {
+        let our_str = "<td>0</td>";
 
-    let their_str = "<td>0</td>";
-    for (let i=0; i<5; i++) {
-        their_str += `<td>${bughouse_counts[3-window.player][i]}</td>`;
-    }
+        for (let j=0; j<5; j++) {
+            our_str += `<td>${bughouse_counts[i][j]}</td>`;
+        }
 
-    window.counts_mine.innerHTML = our_str;
-    window.counts_theirs.innerHTML = their_str;
+        window.counts[i].innerHTML = our_str;
+    }
 }
 
 function update_chess_clock() {
@@ -77,7 +74,7 @@ function handle_message_host(data, message_player) {
     }
 
     if (data.startsWith('MOVE')) {
-        console.log(`[host] got move from player ${message_player}`);
+        console.log(`[host] got move ${data} from player ${message_player}`);
         const params = data.split('_');
         // MOVE_${window.player}_${source}_${target}_${piece}
 
@@ -98,7 +95,7 @@ function handle_message_host(data, message_player) {
 
         // Replicate (but not to the source)
         for (let i=0; i<4; i++) {
-            if (i == message_player) continue;
+            if (i == message_player || i == window.player) continue;
             window.host_peers[i].send(data);
         }
 
@@ -113,7 +110,7 @@ function handle_message_host(data, message_player) {
 
         // Replicate (but not to the source)
         for (let i=0; i<4; i++) {
-            if (i == message_player) continue;
+            if (i == message_player || i == window.player) continue;
             window.host_peers[i].send(data);
         }
 
@@ -150,7 +147,7 @@ function handle_message_player(data) {
         const target = params[3];
         const piece = params[4];
 
-        console.log(`[host] got move from player ${move_player}`);
+        console.log(`[player] got move ${data} from player ${move_player}`);
 
         window.game.doMove(move_player, source, target, piece);
         update_piece_counts(window.game.getBugs());
@@ -234,6 +231,8 @@ function start_game() {
             }
         },
         onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+            console.log('move', window.player, source, target, piece);
+
             const is_valid = window.game.doMove(window.player, source, target, piece);
             
             if (!is_valid) return 'snapback';
@@ -267,9 +266,18 @@ function start_game() {
     window.my_board.start();
     window.their_board.start();
 
-    window.counts_mine = document.getElementById('my_piece_counts');
-    window.counts_theirs = document.getElementById('their_piece_counts');
+    window.counts = [null, null, null, null];
 
+    window.counts[window.player] = document.getElementById('my_piece_counts');
+    window.counts[3-window.player] = document.getElementById('their_piece_counts');
+
+    for (let i=0; i<4; i++) {
+        if (window.counts[i] != null) continue;
+
+        if (i%2 == 0) window.counts[i] = document.getElementById('other_board_white_counts');
+        else window.counts[i] = document.getElementById('other_board_black_counts');
+    }
+    
     window.time_mine = document.getElementById('my_time');
     window.time_theirs = document.getElementById('their_time');
 

@@ -141,7 +141,7 @@ class Board{
 
     doMove(side, from_square, to_square){
         if (side != this.whose_turn){
-            console.log("Nice try Mr. Spy");
+            console.log("eez not your turn");
             return -1;
         }
 
@@ -287,7 +287,7 @@ class Bughouse{
 
     doMove(player_id, from_square, to_square, piece_type){
         const board_id = Math.sign(player_id % 3);
-        const board = this.boards[board_id]
+        const board = this.boards[board_id];
         const side = Boolean(player_id % 2);
 
         let out = null;

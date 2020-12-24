@@ -225,7 +225,7 @@ class Board{
 
         var piece;
         for (piece of this.pieces[+!this.whose_turn]){
-            if (piece.coordinate != king_coordinate  && piece.isMoveAllowed(king_coordinate)){
+            if (piece.coordinate.toString() != move.coordinate.toString() && piece.isMoveAllowed(king_coordinate)){
                 if (move.piece.name == "n" ||  this.isPathClear(piece.coordinate, king_coordinate)){
                     console.log("Protect your commander! Semper Fi!");
                     return -1;

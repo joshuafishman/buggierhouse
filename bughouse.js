@@ -73,7 +73,6 @@ class Board{
         this.whose_turn = 0;
         this.pieces = this.setup();
         this.extra_pieces = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]; 
-        this.clocks = [new Clock(600, seconds(), false), new Clock(600, seconds(), true)];
         this.history = [this.serialize()];
     }
 
@@ -140,7 +139,7 @@ class Board{
         return true;
     }
 
-    doMove(side, from_square, to_square, clock_after){
+    doMove(side, from_square, to_square){
         if (side != this.whose_turn){
             console.log("Nice try Mr. Spy");
             return -1;
@@ -157,7 +156,7 @@ class Board{
         return this._doMove(new Move(piece, to_square, false));
     }
 
-    doBug(side, piece_name, to_square, clock_after){
+    doBug(side, piece_name, to_square){
         if (side != this.whose_turn){
             console.log("Nice try Mr. Spy");
             return -1;
@@ -219,9 +218,6 @@ class Board{
             }
         }
 
-        // move is valid
-        this.clocks[+this.whose_turn].hit();
-
         move.piece.coordinate = move.coordinate;
         let taken_piece = new Piece();
         for (let i = 0; i<this.pieces[+!this.whose_turn].length; i++){
@@ -236,7 +232,6 @@ class Board{
         this.history.push(this.serialize());
 
         this.whose_turn = !this.whose_turn;
-        this.clocks[+this.whose_turn].hit();
         return taken_piece;
     }
     print(){
@@ -255,7 +250,7 @@ class Bughouse{
     constructor(){
         this.boards = [new Board(), new Board()];   
     }
-    doMove(player_id, from_square, to_square, piece_type, clock_after){
+    doMove(player_id, from_square, to_square, piece_type){
         const board_id = Math.sign(player_id % 3);
         const board = this.boards[board_id]
         const side = Boolean(player_id % 2);
@@ -265,11 +260,11 @@ class Bughouse{
             piece_name = piece_type[1].toLowerCase();
             extra_idx = Board.bug_order.search(piece_name);
             board.extra_pieces[side][extra_idx]--;
-            out = board.doBug(side, piece_name, to_square, clock_after);
+            out = board.doBug(side, piece_name, to_square);
         }
 
         else{
-            out = board.doMove(side, from_square, to_square, clock_after);
+            out = board.doMove(side, from_square, to_square);
         }
 
         if (out == -1){
@@ -287,7 +282,7 @@ class Bughouse{
         this.boards[0].print();
         this.boards[1].print();
     }
-    get_bugs(){
+    getBugs(){
         return[this.boards[0].extra_pieces[0],
                this.boards[1].extra_pieces[1],
                this.boards[1].extra_pieces[0],

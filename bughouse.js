@@ -248,10 +248,10 @@ class Board{
             }
         }
         else{
-            this.pieces[this.whose_turn].push(move.piece);
+            this.pieces[+this.whose_turn].push(move.piece);
 
             const extra_idx = Board.bug_order.search(move.piece.name);
-            this.extra_pieces[this.whose_turn][extra_idx]--;
+            this.extra_pieces[+this.whose_turn][extra_idx]--;
         }
                 
         this.history.push(this.serialize());

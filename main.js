@@ -1,20 +1,31 @@
-function update_piece_counts(white, black) {    
-    let white_str = "<td>0</td>";
-    for (let i=0; i<white.length; i++) {
-        white_str += `<td>${white[i]}</td>`;
+function update_piece_counts(bughouse_counts) {  
+    let our_str = "<td>0</td>";
+    for (let i=0; i<5; i++) {
+        our_str += `<td>${bughouse_counts[window.player][i]}</td>`;
     }
 
-    let black_str = "<td>0</td>";
-    for (let i=0; i<black.length; i++) {
-        black_str += `<td>${black[i]}</td>`;
+    let their_str = "<td>0</td>";
+    for (let i=0; i<5; i++) {
+        their_str += `<td>${bughouse_counts[3-window.player][i]}</td>`;
     }
 
-    window.white_dom.innerHTML = white_str;
-    window.black_dom.innerHTML = black_str;
+    window.counts_mine.innerHTML = our_str;
+    window.counts_theirs.innerHTML = their_str;
 }
 
-function fetch_board_states() {
-    update_piece_counts([0,0,0,0,0], [0,0,0,0,0]);
+function update_chess_clock() {
+    if (window.clock_times[0] != null) {
+        const delta = window.clock_times[0] - (new Date().getTime());
+        window.clocks[0] -= delta;
+    }
+
+    if (window.clock_times[1] != null) {
+        const delta = window.clock_times[1] - (new Date().getTime());
+        window.clocks[1] -= delta;
+    }
+
+    window.time_mine.innerText = `${Math.floor(window.clocks[0]/60)}:${(window.clocks[1]%60).toFixed(1)}`;
+        
 }
 
 function create_screen() {
@@ -56,9 +67,30 @@ function handle_message_host(data, player) {
     if (typeof data != "string") {
         data = String.fromCharCode.apply(null, data);
     }
-    
-    if (false) {
 
+    if (data.startsWith('MOVE')) {
+        const params = data.split('_');
+        // MOVE_${window.player}_${source}_${target}_${piece}
+
+        const source = params[2];
+        const target = params[3];
+        const piece = params[4];
+
+        window.game.doMove(player, source, target, piece);
+        update_piece_counts(window.game.getBugs());
+
+
+        if (player == 3 - window.player) {
+            // Was opponents move, start my chess clock and stop my opponents
+            window.clock_times[0] = new Date().getTime();
+            window.clock_times[1] = null;
+        }
+
+        // Replicate (but not to the source)
+        for (let i=0; i<4; i++) {
+            if (i == player) continue;
+            window.host_peers[i].send(data);
+        }
     } else {
         console.log(`[host] host data: ${data}`);
     }
@@ -79,6 +111,23 @@ function handle_message_player(data) {
         console.log(`[player] connected as player ${window.player}`);
 
         start_game();
+    } else if (data.startsWith('MOVE')) {
+        const params = data.split('_');
+        // MOVE_${window.player}_${source}_${target}_${piece}
+
+        const source = params[2];
+        const target = params[3];
+        const piece = params[4];
+
+        window.game.doMove(player, source, target, piece);
+        update_piece_counts(window.game.getBugs());
+
+        if (player == 3 - window.player) {
+            // Was opponents move, start my chess clock and stop my opponents
+            window.clock_times[0] = new Date().getTime();
+            window.clock_times[1] = null;
+        }
+
     } else {
         console.log(`[player] player data: ${data}`);
     }
@@ -98,11 +147,52 @@ function start_game() {
         window.location = "/";
     }
 
+    window.game = new Bughouse();
+    window.clocks = [window.pool_param, window.pool_param] // ours, theirs
+    window.clock_times = [null, null] // last time for timing
+    window.clock_interval = setInterval(update_chess_clock, 40);
+
     window.my_board = Chessboard('my_board', {
         dropOffBoard: 'snapback',
         sparePieces: true,
         pieceTheme:'img/{piece}.png',
         orientation: (window.player % 2 == 0) ? 'white' : 'black',
+        onDragStart: function(source, piece, position, orientation) {
+
+            // Can't move if not ur color
+            if ((piece.startsWith('w') && orientation == 'black') || 
+                (piece.startsWith('b') && orientation == 'white')) {
+                return false;
+            }
+
+            if (source == 'spare') {
+                const bughouse_counts = game.getBugs()[window.player];
+                
+                const ordering  = ['Q', 'R', 'B', 'N', 'P']
+                const count = bughouse_counts[ordering.indexOf(piece.charAt(1))];
+
+                if (count == 0) return false;
+            }
+        },
+        onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+            const is_valid = window.game.doMove(window.player, source, target, piece);
+            
+            if (!is_valid) return false;
+
+            update_piece_counts(window.game.getBugs());
+            
+            // Stop my chess clock and start my opponents
+            window.clock_times[1] = new Date().getTime();
+            window.clock_times[0] = null;
+
+            const move_msg = `MOVE_${window.player}_${source}_${target}_${piece}`;
+
+            if (is_host()) {
+                host_broadcast(move_msg);
+            } else {
+                window.player_peer.send(move_msg)
+            }
+        }
     });
 
     window.their_board = Chessboard('their_board', {
@@ -112,22 +202,20 @@ function start_game() {
     window.my_board.start();
     window.their_board.start();
 
-    const counts_mine = document.getElementById('my_piece_counts');
-    const counts_theirs = document.getElementById('their_piece_counts');
-
-    window.black_dom = window.player % 2 == 0 ? counts_theirs : counts_mine;
-    window.white_dom = window.player % 2 == 0 ? counts_mine : counts_theirs;    
+    window.counts_mine = document.getElementById('my_piece_counts');
+    window.counts_theirs = document.getElementById('their_piece_counts');
 
     window.time_mine = document.getElementById('my_time');
     window.time_theirs = document.getElementById('their_time');
 
-    update_piece_counts([0,0,0,0,0], [0,0,0,0,0]);
-    window.time_mine.innerHTML = window.time_theirs.innerHTML = window.pool_param;
+    update_piece_counts(window.game.getBugs());
+
     play_screen();
 }
 
+// Create a game as host and set up connection edges with handlers.
 function create_game() {
-    window.pool_param = parseFloat(document.getElementById('pool_input').value);
+    window.pool_param = parseFloat(document.getElementById('pool_input').value)*60;
     window.inc_param = parseFloat(document.getElementById('inc_input').value);
     window.player = parseInt(document.getElementById('player_input').value);
 
@@ -208,16 +296,13 @@ function create_game() {
                     }
 
                     dom.innerHTML = dom_text;
-                    
-                }
-                
+                }               
             });
         }
-
-
     }
 }
 
+// Connect host to players and wait for confirmation.
 function start_host() {
     for (let i=0; i<4; i++) {
         if (i == window.player) continue;

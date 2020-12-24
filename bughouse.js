@@ -343,7 +343,7 @@ class Pawn extends Piece{
             return true;
         }
         if(vector[1] == sign*2 && vector[0] == 0){
-            if(this.coordinate[1] == 8*this.side + sign){ // 2nd rank
+            if(this.coordinate[1] == 7*this.side + sign){ // 2nd rank
                 return true;
             }
         }

@@ -14,14 +14,18 @@ function update_piece_counts(bughouse_counts) {
 }
 
 function update_chess_clock() {
+    const temp_time = (new Date().getTime());
+
     if (window.clock_times[0] != null) {
-        const delta = window.clock_times[0] - (new Date().getTime());
-        window.clocks[0] -= delta;
+        const delta = temp_time - window.clock_times[0];
+        window.clock_times[0] = temp_time;
+        window.clocks[0] -= delta/1000;
     }
 
     if (window.clock_times[1] != null) {
-        const delta = window.clock_times[1] - (new Date().getTime());
-        window.clocks[1] -= delta;
+        const delta = temp_time - window.clock_times[1];
+        window.clock_times[1] = temp_time;
+        window.clocks[1] -= delta/1000;
     }
 
     if (window.clocks[1] <= 0) {
@@ -67,12 +71,13 @@ function copy_token(dom_id) {
     $temp.remove();
 }
 
-function handle_message_host(data, player) {
+function handle_message_host(data, message_player) {
     if (typeof data != "string") {
         data = String.fromCharCode.apply(null, data);
     }
 
     if (data.startsWith('MOVE')) {
+        console.log(`[host] got move from player ${message_player}`);
         const params = data.split('_');
         // MOVE_${window.player}_${source}_${target}_${piece}
 
@@ -80,11 +85,11 @@ function handle_message_host(data, player) {
         const target = params[3];
         const piece = params[4];
 
-        window.game.doMove(player, source, target, piece);
+        window.game.doMove(message_player, source, target, piece);
         update_piece_counts(window.game.getBugs());
 
 
-        if (player == 3 - window.player) {
+        if (message_player == 3 - window.player) {
             // Was opponents move, start my chess clock and stop my opponents
             window.clock_times[0] = new Date().getTime();
             window.clock_times[1] = null;
@@ -93,15 +98,22 @@ function handle_message_host(data, player) {
 
         // Replicate (but not to the source)
         for (let i=0; i<4; i++) {
-            if (i == player) continue;
+            if (i == message_player) continue;
             window.host_peers[i].send(data);
+        }
+
+        // update board
+        if (message_player == 3 - window.player) {
+            window.my_board.move(`${source}-${target}`);
+        } else {
+            window.their_board.move(`${source}-${target}`);
         }
     } else if (data.startsWith('GAMEOVER')) {
         const msg = data.substring(9);
 
         // Replicate (but not to the source)
         for (let i=0; i<4; i++) {
-            if (i == player) continue;
+            if (i == message_player) continue;
             window.host_peers[i].send(data);
         }
 
@@ -129,23 +141,33 @@ function handle_message_player(data) {
 
         start_game();
     } else if (data.startsWith('MOVE')) {
+        
         const params = data.split('_');
         // MOVE_${window.player}_${source}_${target}_${piece}
 
+        const move_player = parseInt(params[1]);
         const source = params[2];
         const target = params[3];
         const piece = params[4];
 
-        window.game.doMove(player, source, target, piece);
+        console.log(`[host] got move from player ${move_player}`);
+
+        window.game.doMove(move_player, source, target, piece);
         update_piece_counts(window.game.getBugs());
 
-        if (player == 3 - window.player) {
+        if (move_player == 3 - window.player) {
             // Was opponents move, start my chess clock and stop my opponents
             window.clock_times[0] = new Date().getTime();
             window.clock_times[1] = null;
             window.clocks[1] += window.inc_param;
         }
 
+        // update board        
+        if (move_player == 3 - window.player) {
+            window.my_board.move(`${source}-${target}`);
+        } else {
+            window.their_board.move(`${source}-${target}`);
+        }
     } else if (data.startsWith('GAMEOVER')) {
         const msg = data.substring(9);
 
@@ -160,6 +182,7 @@ function handle_message_player(data) {
 function host_broadcast(data) {
     for (let i=0; i<4; i++) {
         if (i == window.player) continue;
+        console.log(`[host] broadcasting to ${i} data ${data}`)
         window.host_peers[i].send(data);
     }
 }
@@ -261,8 +284,8 @@ function create_game() {
     window.inc_param = parseFloat(document.getElementById('inc_input').value);
     window.player = parseInt(document.getElementById('player_input').value);
 
-    start_game();
-    return;
+    // start_game();
+    // return;
 
     if (isNaN(window.pool_param) || isNaN(window.inc_param)) {
         alert('Invalid pool or inc');

@@ -67,7 +67,7 @@ class Clock{
 
 class Board{
     static bug_order = "qrbnp"
-    static piece_order = [Queen, Rook, Bishop, Knight, Pawn]
+    // static piece_order = [Queen, Rook, Bishop, Knight, Pawn]
 
     constructor(){
         this.whose_turn = 0;

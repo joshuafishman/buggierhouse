@@ -252,7 +252,7 @@ class Board{
             }
             else{
                 if (intersect_piece === null){
-                    console.log("Don't cross the line")
+                    console.log("Don't go off sideways")
                     return -1;
                 }
             }

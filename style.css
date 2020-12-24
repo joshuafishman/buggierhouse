@@ -1,0 +1,47 @@
+body, html, #play_screen {
+    height:100%;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+#my_screen {
+    position:absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-100%, -50%);
+}
+
+#their_screen {
+    position:absolute;
+    top: 50%;
+    right: 25%;
+    transform: translate(50%, -50%);
+  
+}
+
+#my_board {
+    width:600px;
+}
+
+#their_board {
+    width:400px;
+}
+
+.piece_counts {
+    text-align: center;
+    font-size: 24px;
+    margin: 0 auto;
+    width:450px;
+}
+
+.clock {
+    width:100%;
+    text-align: center;
+    margin:10px;
+    font-size: 20px;
+}
+
+
+#connection_token {
+    font-family: 'Courier New', Courier, monospace;
+    font-style: italic;
+}

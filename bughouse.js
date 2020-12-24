@@ -238,7 +238,7 @@ class Board{
         return taken_piece;
     }
     print(){
-        console.log(this.extra_pieces);
+        console.log(this.extra_pieces[0]);
         const b = this.serialize();
         let out = ""
         for (let i = 0; i<8; i++){
@@ -246,6 +246,8 @@ class Board{
             out += "\n";
         }
         console.log(out);
+        console.log(this.extra_pieces[1]);
+
     }
 }           
 
@@ -253,6 +255,14 @@ class Bughouse{
     constructor(){
         this.boards = [new Board(), new Board()];   
     }
+
+    parse_square(square){
+        const order = "abcdefgh";
+        const col = order.search(square[0]);
+        const row = parseInt(square[1]) - 1;
+        return [col, row];
+    }
+
     doMove(player_id, from_square, to_square, piece_type){
         const board_id = Math.sign(player_id % 3);
         const board = this.boards[board_id]
@@ -260,24 +270,27 @@ class Bughouse{
 
         let out = null;
         if(from_square == "spare"){
-            piece_name = piece_type[1].toLowerCase();
-            extra_idx = Board.bug_order.search(piece_name);
+            const piece_name = piece_type[1].toLowerCase();
+            const extra_idx = Board.bug_order.search(piece_name);
             board.extra_pieces[side][extra_idx]--;
-            out = board.doBug(side, piece_name, to_square);
+            out = board.doBug(side, piece_name, this.parse_square(to_square));
         }
 
         else{
-            out = board.doMove(side, from_square, to_square);
+            out = board.doMove(side, this.parse_square(from_square), this.parse_square(to_square));
         }
 
         if (out == -1){
             return false;
         }
 
-        extra_idx = Board.bug_order.search(out.name);
-        if (extra_idx != -1){
-            board.extra_pieces[side][extra_idx]--;
+        if (out.name != ""){
+            const extra_idx = Board.bug_order.search(out.name);
+            if (extra_idx != -1){
+                board.extra_pieces[side][extra_idx]--;
+            }
         }
+
 
         return true;   
     }

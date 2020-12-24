@@ -116,10 +116,11 @@ class Board{
     }
 
     isPathClear(c1, c2){
-        let unit_vector = coordDiff(c2, c1)
-        unit_vector = [Math.sign(unit_vector[0]), Math.sign(unit_vector[1])]
+        const vector = coordDiff(c2, c1);
+        const len = Math.max(Math.abs(vector[0]), Math.abs(vector[1]));
+        const unit_vector = vector.map(Math.sign);
 
-        for (let i = 1; i<=8; i++){
+        for (let i = 1; i<=len; i++){
             let c = coordSum(c1, coordMul(unit_vector, i));  
             if (c == c2){
                 break;
@@ -127,7 +128,7 @@ class Board{
             var side, piece;
             for (side of this.pieces){
                 for (piece of side){
-                    if (piece.coordinate == c){
+                    if (piece.coordinate.toString() == c.toString()){
                         return false;
                     }
                 }
@@ -136,27 +137,44 @@ class Board{
         return true;
     }
 
-    moveListenerCallback(move){
+    doMove(side, from_square, to_square, clock_after){
+        if (side != this.whose_turn){
+            console.log("Nice try Mr. Spy");
+            return null;
+        }
+
+        var piece;
+        for (piece of this.pieces[+side]){
+            if (piece.coordinate.toString() == from_square.toString()){
+                break;
+            }
+        }
+        console.log(piece);
+        
+        return this._doMove(new Move(piece, to_square, false));
+    }
+
+    _doMove(move){
         if (move.piece.side != this.whose_turn){
-            console.log("Nice try Mr. Spy")
-            return null
+            console.log("Nice try Mr. Spy");
+            return null;
         } 
 
         var piece;
         for (piece of this.pieces[+this.whose_turn]){
             if (piece.coordinate.toString() == move.coordinate.toString()){
-                console.log("Friendly fire :(")
-                return null
+                console.log("Friendly fire :(");
+                return null;
             }
         }
 
         if (!move.isNew){
             if (!move.piece.isMoveAllowed(move.coordinate)){
-                console.log("Learn how your pieces move, nitwit")
+                console.log("Learn how your pieces move, nitwit");
                 return null;
             }
-            if (move.piece.name != "k" &&  !this.isPathClear(move.piece.coordinate, move.coordinate)){
-                console.log("Try going around next time...")
+            if (move.piece.name != "n" &&  !this.isPathClear(move.piece.coordinate, move.coordinate)){
+                console.log("Try going around next time...");
                 return null;
             }
         }
@@ -165,8 +183,8 @@ class Board{
             var piece;
             for (piece of this.pieces[+!this.whose_turn]){
                 if (piece.coordinate.toString() == move.coordinate.toString()){
-                    console.log("Nice try, but that's not how bughouse works")
-                    return null
+                    console.log("Nice try, but that's not how bughouse works");
+                    return null;
                 }
             }
         }
@@ -180,7 +198,7 @@ class Board{
         for (piece of this.pieces[+!this.whose_turn]){
             if (piece.coordinate != king_coordinate  && piece.isMoveAllowed(king_coordinate)){
                 if (move.piece.name == "n" ||  this.isPathClear(piece.coordinate, king_coordinate)){
-                    console.log("Protect your commander! Semper Fi!")
+                    console.log("Protect your commander! Semper Fi!");
                     return null;
                 }
             }
@@ -190,7 +208,7 @@ class Board{
         this.clocks[+this.whose_turn].hit();
 
         move.piece.coordinate = move.coordinate;
-        let taken_piece = null;
+        let taken_piece = new Piece();
         for (let i = 0; i<this.pieces[+!this.whose_turn].length; i++){
             const piece = this.pieces[+!this.whose_turn][i];
             if (piece.coordinate.toString() == move.coordinate.toString()){
@@ -219,9 +237,16 @@ class Board{
 
 class Bughouse{
     constructor(){
-        this.boards = [new Board(), new Board()]; 
-        this.listener1 = new moveListener(this.boards[0].moveListenerCallback);
-        this.listener2 = new moveListener(this.boards[1].moveListenerCallback);    
+        this.boards = [new Board(), new Board()];   
+    }
+    doMove(player_id, from_square, to_square, piece_type, clock_after){
+        const board_id = Math.sign(player_id % 3);
+        const side = Boolean(player_id % 2);
+        return this.boards[board_id].doMove(side, from_square, to_square, clock_after);
+    }
+    print(){
+        this.boards[0].print();
+        this.boards[1].print();
     }
    // TODO give extra pieces
 }
@@ -254,7 +279,7 @@ class King extends Piece{
 
     isMoveAllowed(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
-        return (Math.abs(vector[1]) < 2 && Math.abs(vector[2]) < 2);
+        return (Math.abs(vector[1]) < 2 && Math.abs(vector[0]) < 2);
     }
 }
 
@@ -263,7 +288,7 @@ class Bishop extends Piece{
 
     isMoveAllowed(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
-        return (Math.abs(vector[1]) == Math.abs(vector[2]));
+        return (Math.abs(vector[1]) == Math.abs(vector[0]));
     }
 }
 
@@ -272,7 +297,7 @@ class Rook extends Piece{
 
     isMoveAllowed(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
-        return (vector[1] == 0 || vector[2] == 0);
+        return (vector[1] == 0 || vector[0] == 0);
     }
 }
 
@@ -281,7 +306,7 @@ class Queen extends Piece{
 
     isMoveAllowed(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
-        return (vector[1] == 0 || vector[2] == 0 || Math.abs(vector[1]) == Math.abs(vector[2]));
+        return (vector[1] == 0 || vector[0] == 0 || Math.abs(vector[1]) == Math.abs(vector[0]));
     }
 }
 

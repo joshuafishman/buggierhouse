@@ -1,3 +1,5 @@
+const SOCK_URL = "ws://127.0.0.1:8765/";
+
 function update_piece_counts(bughouse_counts) {  
     for (let i=0; i<4; i++) {
         let our_str = "<td>0</td>";
@@ -37,34 +39,48 @@ function update_chess_clock() {
 function create_screen() {
     document.getElementById('create_screen').style = 'display:block';
     document.getElementById('play_screen').style = 'display:none';
-    document.getElementById('token_screen').style = 'display:none'; 
+    document.getElementById('join_screen').style = 'display:none'; 
+    document.getElementById('loading_screen').style = 'display:none'; 
+    document.getElementById('waiting_screen').style = 'display:none'; 
 }
 
 function play_screen() {
     document.getElementById('play_screen').style = 'display:block';
     document.getElementById('create_screen').style = 'display:none'; 
-    document.getElementById('token_screen').style = 'display:none';        
+    document.getElementById('join_screen').style = 'display:none'; 
+    document.getElementById('loading_screen').style = 'display:none';
+    document.getElementById('waiting_screen').style = 'display:none';  
 }
 
-function token_screen(token) {
-    const token_dom = document.getElementById('connection_token');
+function join_screen() {
+    document.getElementById('join_screen').style = 'display:block'; 
+    document.getElementById('play_screen').style = 'display:none';
+    document.getElementById('create_screen').style = 'display:none';  
+    document.getElementById('loading_screen').style = 'display:none'; 
+    document.getElementById('waiting_screen').style = 'display:none'; 
+}
 
-    token_dom.innerText = json_to_b64(token);
+function loading_screen() {
+    document.getElementById('loading_screen').style = 'display:block'; 
+    document.getElementById('join_screen').style = 'display:none'; 
+    document.getElementById('play_screen').style = 'display:none';
+    document.getElementById('create_screen').style = 'display:none';  
+    document.getElementById('waiting_screen').style = 'display:none'; 
+}
 
+function waiting_screen() {
+    document.getElementById('waiting_screen').style = 'display:block'; 
+    document.getElementById('loading_screen').style = 'display:none'; 
+    document.getElementById('join_screen').style = 'display:none'; 
     document.getElementById('play_screen').style = 'display:none';
     document.getElementById('create_screen').style = 'display:none';     
-    document.getElementById('token_screen').style = 'display:block';   
 }
 
-function copy_token(dom_id) {
-    if (!dom_id) {
-        dom_id = 'connection_token';
-    }
-
-    var $temp = $("<input>");
-    $("body").append($temp);
-    $temp.val($(`#${dom_id}`).text()).select();
-    document.execCommand("copy");
+function copy_url() {
+    var $temp = $('<input>');
+    $('body').append($temp);
+    $temp.val($('#connection_url').text()).select();
+    document.execCommand('copy');
     $temp.remove();
 }
 
@@ -74,88 +90,24 @@ function drop_piece(board, position, piece) {
     board.position(pos, false);
 }
 
-function handle_message_host(data, message_player) {
-    if (typeof data != "string") {
-        data = String.fromCharCode.apply(null, data);
-    }
+function handle_message(event) {
+    const data = JSON.parse(event.data);
 
-    if (data.startsWith('MOVE')) {
-        console.log(`[host] got move ${data} from player ${message_player}`);
-        const params = data.split('_');
-        // MOVE_${window.player}_${source}_${target}_${piece}
-
-        const source = params[2];
-        const target = params[3];
-        const piece = params[4];
-
-        window.game.doMove(message_player, source, target, piece);
-        update_piece_counts(window.game.getBugs());
-
-
-        if (message_player == 3 - window.player) {
-            // Was opponents move, start my chess clock and stop my opponents
-            window.clock_times[0] = new Date().getTime();
-            window.clock_times[1] = null;
-            window.clocks[1] += window.inc_param;
-        }
-
-        // Replicate (but not to the source)
-        for (let i=0; i<4; i++) {
-            if (i == message_player || i == window.player) continue;
-            window.host_peers[i].send(data);
-        }
-
-        // update board
-        if (message_player == 3 - window.player) {
-            if (source == 'spare') drop_piece(window.my_board, target, piece);
-            else window.my_board.move(`${source}-${target}`);
-        } else {
-            if (source == 'spare') drop_piece(window.their_board, target, piece);
-            else window.their_board.move(`${source}-${target}`);
-        }
-    } else if (data.startsWith('GAMEOVER')) {
-        const msg = data.substring(9);
-
-        // Replicate (but not to the source)
-        for (let i=0; i<4; i++) {
-            if (i == message_player || i == window.player) continue;
-            window.host_peers[i].send(data);
-        }
-
-        clearInterval(window.chessInterval);
-        alert(`Game over!\n${msg}`);
-        start_game();
-    } else {
-        console.log(`[host] host data: ${data}`);
-    }
-}
-
-function handle_message_player(data) {
-    if (typeof data != "string") {
-        data = String.fromCharCode.apply(null, data);
-    }
-
-    if (data.startsWith('ALLCONNECTED')) {
-        const params = data.split('_');
-
-        window.player = parseInt(params[1]);
-        window.pool_param = parseFloat(params[2]);
-        window.inc_param  = parseFloat(params[3]);
+    if (data['msg'] == 'all_connected') {
+        console.log(data);
+        window.pool_param = data['pool'];
+        window.inc_param  = data['inc'];
 
         console.log(`[player] connected as player ${window.player}`);
 
         start_game();
-    } else if (data.startsWith('MOVE')) {
-        
-        const params = data.split('_');
-        // MOVE_${window.player}_${source}_${target}_${piece}
+    } else if (data['msg'] == 'move') {
+        const move_player = data['player'];
+        const source = data['src'];
+        const target = data['target'];
+        const piece = data['piece'];
 
-        const move_player = parseInt(params[1]);
-        const source = params[2];
-        const target = params[3];
-        const piece = params[4];
-
-        console.log(`[player] got move ${data} from player ${move_player}`);
+        console.log(`[player] got move ${data}`);
 
         window.game.doMove(move_player, source, target, piece);
         update_piece_counts(window.game.getBugs());
@@ -175,34 +127,43 @@ function handle_message_player(data) {
             if (source == 'spare') drop_piece(window.their_board, target, piece);
             else window.their_board.move(`${source}-${target}`);
         }
-    } else if (data.startsWith('GAMEOVER')) {
-        const msg = data.substring(9);
+    } else if (data['msg'] == 'game_over') {
+        const msg = data['victory_msg'];
 
         clearInterval(window.chessInterval);
         alert(`Game over!\n${msg}`);
         start_game();
+    } else if (data['msg'] == 'game_created') {
+        const url_dom = document.getElementById('connection_url');
+        
+        const url = window.location.href + "#" + encodeURIComponent(data['game_id']);
+        url_dom.href = url;
+        url_dom.innerText = url;
+
+        document.getElementById('create_0').style = 'display:none';
+        document.getElementById('create_1').style = 'display:block';
+        create_screen();
+    } else if (data['msg'] == 'join_success') {
+        if (data['success']) waiting_screen();
+        else {
+            alert('Joining failed, make sure you selected the right player.');
+            join_screen();
+        }
     } else {
         console.log(`[player] player data: ${data}`);
     }
 }
 
-function host_broadcast(data) {
-    for (let i=0; i<4; i++) {
-        if (i == window.player) continue;
-        console.log(`[host] broadcasting to ${i} data ${data}`)
-        window.host_peers[i].send(data);
-    }
+function send_msg(msg, data) {
+    data['msg'] = msg;
+    window.sock.send(JSON.stringify(data));
 }
 
 function we_won_the_game() {
     // Game is over, we won!
     const victory_message = prompt('You won! Type your victory message below.');
-    if (is_host()) {
-        host_broadcast(`GAMEOVER_${victory_message}`);
-    } else {
-        window.player_peer.send(`GAMEOVER_${victory_message}`);
-    }
-
+    send_msg('game_over', {'victory_msg':victory_message});
+    
     clearInterval(window.chessInterval);
     start_game();        
 }
@@ -259,13 +220,12 @@ function start_game() {
             window.clock_times[1] = new Date().getTime();
             window.clock_times[0] = null;
 
-            const move_msg = `MOVE_${window.player}_${source}_${target}_${piece}`;
-
-            if (is_host()) {
-                host_broadcast(move_msg);
-            } else {
-                window.player_peer.send(move_msg)
-            }
+            send_msg('move', {
+                'player':window.player,
+                'src':source,
+                'target':target,
+                'piece':piece
+            });
         }
     });
 
@@ -308,83 +268,13 @@ function create_game() {
     if (isNaN(window.pool_param) || isNaN(window.inc_param)) {
         alert('Invalid pool or inc');
     } else {
-        window.host_peers = [null,null,null,null];
-        window.connected = [false, false, false, false];
-        window.connected[window.player] = true;
-        window.signals = [null, null, null, null];
+        send_msg('start', {
+            'player':window.player,
+            'pool':window.pool_param,
+            'inc':window.inc_param
+        });
 
-        for (let i=0; i<4; i++) {
-            if (i == window.player) continue;
-
-            window.host_peers[i] = new SimplePeer({
-                initiator:true,
-                trickle:false
-            });
-
-            window.host_peers[i].on('data', data => handle_message_host(data, i));
-
-            window.host_peers[i].on('connect', _ => {
-                console.log(`[host] player ${i} connected to host!`);
-                
-                if (window.connected[i]) {
-                    alert(`Multiple users as player ${i}, aborting!`);
-                    return;
-                }
-        
-                window.connected[i] = true;
-                if (window.connected.every(v => v === true)) {
-                    // All connected, time to launch the game!!!
-                    for (let j=0; j<4; j++) {
-                        if (window.player == j) continue;
-                        window.host_peers[j].send(
-                            `ALLCONNECTED_${j}_${window.pool_param}_${window.inc_param}`
-                        );
-                    }
-
-                    start_game();
-                }
-            });
-
-            window.host_peers[i].on('error', err => console.log(`[host] error player ${i}`, err));
-
-            window.host_peers[i].on('signal', data => {
-                const json_b64 = json_to_b64(data);
-                window.signals[i] = json_b64;
-
-                let all_set = true;
-                for (let j=0; j<4; j++) {
-                    if (j == window.player) continue;
-
-                    if (window.signals[j] == null) all_set = false;
-                }
-
-                if (all_set) {
-                    document.getElementById('create_0').style = "display:none";
-                    document.getElementById('create_1').style = "display:block";
-
-                    const dom = document.getElementById('create_1').children[1];
-
-                    let dom_text = ""
-                    for (let j=0; j<4; j++) {
-                        if (j == window.player) continue;
-
-                        const color = j%2 == 0 ? "White" : "Black";
-                        const team = j < 2 ? 1 : 2;
-
-                        const url = window.location.href + "#" + encodeURIComponent(window.signals[j]);
-
-                        dom_text += `<h3>${color} team ${team}</h3>`;
-                        dom_text += `<p><a href="${url}" target="_blank">Join link</a> `;
-                        dom_text += `<button onclick="copy_token('clipboard_hidden_${j}')">Copy to clipboard</button></p>`;
-                        dom_text += `<span id="clipboard_hidden_${j}" style="display:none">${url}</span>`;
-                        dom_text += `<p>Token: <input id="token_${j}" /></p>`;
-                        dom_text += `<br />`;
-                    }
-
-                    dom.innerHTML = dom_text;
-                }               
-            });
-        }
+        loading_screen();
     }
 }
 
@@ -400,32 +290,22 @@ function start_host() {
     document.getElementById('create_2').style = "display:block";
 }
 
+function join_game() {
+    const game_id = decodeURIComponent(window.location.hash.substring(1));
+    window.player = parseInt(document.getElementById('join_player_input').value);
+
+    send_msg('join', {'game_id':game_id, 'player':window.player});
+
+    loading_screen();
+}
+
 function start_app() {
+    window.sock = new WebSocket(SOCK_URL);
+    window.sock.onmessage = handle_message;
+
     if (window.location.hash.length == 0) {
         create_screen();
-        return;
-    }
-
-    const token = b64_to_json(decodeURIComponent(window.location.hash.substring(1)));
-
-    window.player_peer = new SimplePeer({
-        initiator:false,
-        trickle:false
-    });
-
-    window.player_peer.on('error', err => console.log('error', err));
-
-    window.player_peer.on('data', handle_message_player);
-
-    window.player_peer.on('signal', data => {
-        token_screen(data);
-    });
-
-    window.player_peer.on('connect', _ => {
-        console.log('[player] player connected!');
-    });
-
-    window.player_peer.signal(token);
+    } else join_screen();
 }
 
 function json_to_b64(data) {

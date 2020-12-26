@@ -1,4 +1,4 @@
-const SOCK_URL = "ws://127.0.0.1:8765/";
+const SOCK_URL = "ws://13.68.255.132:8765/";
 
 function update_piece_counts(bughouse_counts) {  
     for (let i=0; i<4; i++) {
@@ -94,7 +94,6 @@ function handle_message(event) {
     const data = JSON.parse(event.data);
 
     if (data['msg'] == 'all_connected') {
-        console.log(data);
         window.pool_param = data['pool'];
         window.inc_param  = data['inc'];
 
@@ -262,9 +261,6 @@ function create_game() {
     window.inc_param = parseFloat(document.getElementById('inc_input').value);
     window.player = parseInt(document.getElementById('player_input').value);
 
-    // start_game();
-    // return;
-
     if (isNaN(window.pool_param) || isNaN(window.inc_param)) {
         alert('Invalid pool or inc');
     } else {
@@ -276,18 +272,6 @@ function create_game() {
 
         loading_screen();
     }
-}
-
-// Connect host to players and wait for confirmation.
-function start_host() {
-    for (let i=0; i<4; i++) {
-        if (i == window.player) continue;
-        const token = document.getElementById(`token_${i}`).value;
-        window.host_peers[i].signal(b64_to_json(token));
-    }
-
-    document.getElementById('create_1').style = "display:none";
-    document.getElementById('create_2').style = "display:block";
 }
 
 function join_game() {
@@ -306,16 +290,4 @@ function start_app() {
     if (window.location.hash.length == 0) {
         create_screen();
     } else join_screen();
-}
-
-function json_to_b64(data) {
-    return btoa(JSON.stringify(data));
-}
-
-function b64_to_json(data) {
-    return JSON.parse(atob(data));
-}
-
-function is_host() {
-    return 'host_peers' in window;
 }

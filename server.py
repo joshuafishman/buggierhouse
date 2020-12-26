@@ -74,6 +74,6 @@ async def handler(websocket, path):
                 print(f"Game {client_state['game_id']} destroyed!")
                 del games[client_state['game_id']]
 
-start_server = websockets.serve(handler, "localhost", 8765)
+start_server = websockets.serve(handler, "0.0.0.0", 8765)
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()

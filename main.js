@@ -1,4 +1,4 @@
-const SOCK_URL = "ws://13.68.255.132:8765/";
+const SOCK_URL = "wss://13.68.255.132:8765/";
 
 function update_piece_counts(bughouse_counts) {  
     for (let i=0; i<4; i++) {
@@ -284,7 +284,7 @@ function join_game() {
 }
 
 function start_app() {
-    window.sock = new WebSocket(SOCK_URL);
+    window.sock = new WebSocket(`ws://${window.location.host}`);
     window.sock.onmessage = handle_message;
 
     if (window.location.hash.length == 0) {

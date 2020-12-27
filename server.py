@@ -21,6 +21,8 @@ async def process_request(sever_root, path, request_headers):
     if "Upgrade" in request_headers:
         return  # Probably a WebSocket connection
 
+    path = path.split('?')[0]
+
     if path == '/':
         path = '/index.html'
 
@@ -36,6 +38,7 @@ async def process_request(sever_root, path, request_headers):
     if os.path.commonpath((sever_root, full_path)) != sever_root or \
             not os.path.exists(full_path) or not os.path.isfile(full_path):
         print("HTTP GET {} 404 NOT FOUND".format(path))
+        print(full_path)
         return HTTPStatus.NOT_FOUND, [], b'404 NOT FOUND'
 
     # Guess file content type
@@ -72,7 +75,8 @@ async def websocket_handler(websocket, path):
 
                 games[client_state['game_id']] = {
                     'players':[None, None, None, None], 
-                    'pool':data['pool'], 'inc':data['inc']
+                    'pool':data['pool'], 'inc':data['inc'],
+                    'started':False
                 }
 
                 games[client_state['game_id']]['players'][client_state['player']] = websocket
@@ -91,14 +95,27 @@ async def websocket_handler(websocket, path):
                     client_state['player'] = data['player']
                     games[client_state['game_id']]['players'][client_state['player']] = websocket
 
-                    await websocket.send(json.dumps({'msg':'join_success', 'success': True}))
-
                     if not any(p is None for p in games[client_state['game_id']]['players']):
-                        await asyncio.wait([player.send(json.dumps({
-                            'msg':'all_connected',
-                            'pool':games[client_state['game_id']]['pool'],
-                            'inc':games[client_state['game_id']]['inc']
-                        })) for player in games[client_state['game_id']]['players']])
+                        if not games[client_state['game_id']]['started']:
+                            await websocket.send(json.dumps({'msg':'join_success', 'success': True}))
+
+                            games[client_state['game_id']]['started'] = True
+                            await asyncio.wait([player.send(json.dumps({
+                                'msg':'all_connected',
+                                'pool':games[client_state['game_id']]['pool'],
+                                'inc':games[client_state['game_id']]['inc']
+                            })) for player in games[client_state['game_id']]['players']])
+                        else:
+                            # Select a player to be responsible for the state update
+                            sync_rep = games[client_state['game_id']]['players'][3-client_state['player']]
+
+                            if sync_rep is not None:
+                                await sync_rep.send(json.dumps({'msg':'reconnected'}))
+                            else:
+                                await websocket.send(json.dumps({'msg':'join_success', 'success': False}))
+                    else:
+                        await websocket.send(json.dumps({'msg':'join_success', 'success': True}))
+
 
                 else:
                     await websocket.send(json.dumps({'msg':'join_success', 'success': False}))

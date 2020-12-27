@@ -296,6 +296,16 @@ class Board{
         console.log(this.extra_pieces[1]);
 
     }
+
+    getDict() {
+        // TODO: return dict for the board in following format:
+        // {
+        //     a4: 'bK',
+        //     c4: 'wK',
+        //     a7: 'wR'
+        // }
+        return {};
+    }
 }           
 
 class Bughouse{
@@ -350,6 +360,24 @@ class Bughouse{
                this.boards[1].extra_pieces[1],
                this.boards[1].extra_pieces[0],
                this.boards[0].extra_pieces[1]];
+    }
+
+    getTurns() {
+        // zero indexed turn numbers
+        return [this.boards[0].history.length - 1, this.boards[1].history.length - 1];
+    }
+
+    serialize() {
+        // TODO: return a string that can be parsed with deserialize() into the same thing
+        return "";
+    }
+
+    deserialize(serialization) {
+        // TODO: parse the serialization and update the state
+    }
+
+    getBoardDicts() {        
+        return [this.boards[0].getDict(), this.boards[1].getDict()];
     }
 }
 

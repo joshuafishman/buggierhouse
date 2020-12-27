@@ -143,11 +143,47 @@ function handle_message(event) {
         document.getElementById('create_1').style = 'display:block';
         create_screen();
     } else if (data['msg'] == 'join_success') {
-        if (data['success']) waiting_screen();
-        else {
+        console.log(data);
+        if (data['success']) {
+            waiting_screen();
+        } else {
             alert('Joining failed, make sure you selected the right player.');
             join_screen();
         }
+    } else if (data['msg'] == 'reconnected') {
+        // Sync to a refreshed player
+        send_msg('sync', {
+            'serialization':window.game.serialize(),
+            'pool':window.pool_param,
+            'inc':window.inc_param,
+            'clocks':window.clocks
+        });
+
+    } else if (data['msg'] == 'sync' && isNaN(window.game)) {
+        window.pool_param = data['pool']
+        window.inc_param = data['inc']
+        start_game();
+
+        window.game.deserialize(data['serialization']);
+
+        // Set chess clocks
+        window.clocks = [data['clocks'][1], data['clocks'][0]]
+        const turns = window.game.getTurns()[+(window.player == 1 || window.player == 2)];
+        if (window.player%2 == turns%2) {
+            // it's our turn, start our clock
+            window.clock_times[0] = new Date().getTime();
+            window.clock_times[1] = null;
+        } else {
+            // It's our opponents turn, start their clock
+            window.clock_times[1] = new Date().getTime();
+            window.clock_times[0] = null;
+        }
+
+        // Set GUIs
+        update_piece_counts(window.game.getBugs());
+        const dicts = window.game.getBoardDicts();
+        window.my_board.position(dicts[+(window.player == 1 || window.player == 2)]);
+        window.their_board.position(dicts[+(window.player == 0 || window.player == 3)]);
     } else {
         console.log(`[player] player data: ${data}`);
     }

@@ -107,7 +107,12 @@ async def websocket_handler(websocket, path):
                             })) for player in games[client_state['game_id']]['players']])
                         else:
                             # Select a player to be responsible for the state update
-                            sync_rep = games[client_state['game_id']]['players'][3-client_state['player']]
+                            connected_players = [
+                                i for i, p in enumerate(games[client_state['game_id']]['players']) 
+                                if p is not None and p != websocket
+                            ]
+
+                            sync_rep = games[client_state['game_id']]['players'][connected_players[0]]
 
                             if sync_rep is not None:
                                 await sync_rep.send(json.dumps({'msg':'reconnected'}))

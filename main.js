@@ -12,28 +12,15 @@ function update_piece_counts(bughouse_counts) {
     }
 }
 
-function update_chess_clock() {
-    const temp_time = (new Date().getTime());
-
-    if (window.clock_times[0] != null) {
-        const delta = temp_time - window.clock_times[0];
-        window.clock_times[0] = temp_time;
-        window.clocks[0] -= delta/1000;
-    }
-
-    if (window.clock_times[1] != null) {
-        const delta = temp_time - window.clock_times[1];
-        window.clock_times[1] = temp_time;
-        window.clocks[1] -= delta/1000;
-    }
-
-    if (window.clocks[1] <= 0) {
+function update_chess_clock(clocks) {
+    if (clocks[window.player] <= 0) {
         we_won_the_game();
         return;
     }
 
-    window.time_mine.innerText = `${Math.floor(window.clocks[0]/60)}:${(window.clocks[0]%60).toFixed(1)}`;
-    window.time_theirs.innerText = `${Math.floor(window.clocks[1]/60)}:${(window.clocks[1]%60).toFixed(1)}`;
+    for (let i=0; i<4; i++) {
+        window.time_dom[i].innerText = `${Math.floor(clocks[i]/60)}:${(clocks[i]%60).toFixed(1)}`;
+    }
 }
 
 function create_screen() {
@@ -84,10 +71,13 @@ function copy_url() {
     $temp.remove();
 }
 
-function drop_piece(board, position, piece) {
-    const pos = board.position();
-    pos[position] = piece;
-    board.position(pos, false);
+function update_gui(animate) {
+    const dicts = window.game.getBoardDicts();
+
+    window.my_board.position(dicts[+(window.player == 1 || window.player == 2)], animate);
+    window.their_board.position(dicts[+(window.player == 0 || window.player == 3)], animate);
+
+    update_piece_counts(window.game.getBugs());
 }
 
 function handle_message(event) {
@@ -109,23 +99,9 @@ function handle_message(event) {
         console.log(`[player] got move ${data}`);
 
         window.game.doMove(move_player, source, target, piece);
-        update_piece_counts(window.game.getBugs());
+        update_gui(true);
 
-        if (move_player == 3 - window.player) {
-            // Was opponents move, start my chess clock and stop my opponents
-            window.clock_times[0] = new Date().getTime();
-            window.clock_times[1] = null;
-            window.clocks[1] += window.inc_param;
-        }
-
-        // update board
-        if (move_player == 3 - window.player) {
-            if (source == 'spare') drop_piece(window.my_board, target, piece);
-            else window.my_board.move(`${source}-${target}`);
-        } else {
-            if (source == 'spare') drop_piece(window.their_board, target, piece);
-            else window.their_board.move(`${source}-${target}`);
-        }
+        window.clock.hit(move_player);
     } else if (data['msg'] == 'game_over') {
         const msg = data['victory_msg'];
 
@@ -133,17 +109,16 @@ function handle_message(event) {
         alert(`Game over!\n${msg}`);
         start_game();
     } else if (data['msg'] == 'game_created') {
-        const url_dom = document.getElementById('connection_url');
-        
-        const url = window.location.href + "#" + encodeURIComponent(data['game_id']);
-        url_dom.href = url;
-        url_dom.innerText = url;
+        window.location.hash =  "#" + encodeURIComponent(data['game_id']);
 
+        const url_dom = document.getElementById('connection_url');
+        url_dom.href = window.location.href;
+        url_dom.innerText = window.location.href;
+        
         document.getElementById('create_0').style = 'display:none';
         document.getElementById('create_1').style = 'display:block';
         create_screen();
     } else if (data['msg'] == 'join_success') {
-        console.log(data);
         if (data['success']) {
             waiting_screen();
         } else {
@@ -156,7 +131,8 @@ function handle_message(event) {
             'serialization':window.game.serialize(),
             'pool':window.pool_param,
             'inc':window.inc_param,
-            'clocks':window.clocks
+            'clocks':window.clock.clocks,
+            'clock_times':window.clock.clock_times
         });
 
     } else if (data['msg'] == 'sync' && isNaN(window.game)) {
@@ -165,25 +141,11 @@ function handle_message(event) {
         start_game();
 
         window.game.deserialize(data['serialization']);
-
-        // Set chess clocks
-        window.clocks = [data['clocks'][1], data['clocks'][0]]
-        const turns = window.game.getTurns()[+(window.player == 1 || window.player == 2)];
-        if (window.player%2 == turns%2) {
-            // it's our turn, start our clock
-            window.clock_times[0] = new Date().getTime();
-            window.clock_times[1] = null;
-        } else {
-            // It's our opponents turn, start their clock
-            window.clock_times[1] = new Date().getTime();
-            window.clock_times[0] = null;
-        }
+        window.clock.clocks = data['clocks'];
+        window.clock.clock_times = data['clock_times'];
 
         // Set GUIs
-        update_piece_counts(window.game.getBugs());
-        const dicts = window.game.getBoardDicts();
-        window.my_board.position(dicts[+(window.player == 1 || window.player == 2)]);
-        window.their_board.position(dicts[+(window.player == 0 || window.player == 3)]);
+        update_gui(false);
     } else {
         console.log(`[player] player data: ${data}`);
     }
@@ -196,7 +158,9 @@ function send_msg(msg, data) {
 
 function we_won_the_game() {
     // Game is over, we won!
-    const victory_message = prompt('You won! Type your victory message below.');
+    let victory_message = prompt('You won! Type your victory message below.');
+
+    if (victory_message == null) victory_message = `Team ${1+(window.player >= 2)} won!`;
     send_msg('game_over', {'victory_msg':victory_message});
     
     clearInterval(window.chessInterval);
@@ -210,9 +174,6 @@ function start_game() {
     }
 
     window.game = new Bughouse();
-    window.clocks = [window.pool_param, window.pool_param] // ours, theirs
-    window.clock_times = [null, null] // last time for timing
-    window.clock_interval = setInterval(update_chess_clock, 40);
 
     window.my_board = Chessboard('my_board', {
         dropOffBoard: 'snapback',
@@ -237,23 +198,18 @@ function start_game() {
             }
         },
         onDrop: function(source, target, piece, newPos, oldPos, orientation) {
-            console.log('move', window.player, source, target, piece);
-
             const is_valid = window.game.doMove(window.player, source, target, piece);
             
             if (!is_valid) return 'snapback';
+
+            update_gui(false);
 
             if (window.game.isOver()) {
                 we_won_the_game();
                 return;
             }
 
-            window.clocks[0] += window.inc_param;
-            update_piece_counts(window.game.getBugs());
-            
-            // Stop my chess clock and start my opponents
-            window.clock_times[1] = new Date().getTime();
-            window.clock_times[0] = null;
+            window.clock.hit(window.player);
 
             send_msg('move', {
                 'player':window.player,
@@ -272,7 +228,6 @@ function start_game() {
     window.their_board.start();
 
     window.counts = [null, null, null, null];
-
     window.counts[window.player] = document.getElementById('my_piece_counts');
     window.counts[3-window.player] = document.getElementById('their_piece_counts');
 
@@ -282,12 +237,23 @@ function start_game() {
         if (i%2 == 0) window.counts[i] = document.getElementById('other_board_white_counts');
         else window.counts[i] = document.getElementById('other_board_black_counts');
     }
-    
-    window.time_mine = document.getElementById('my_time');
-    window.time_theirs = document.getElementById('their_time');
 
-    update_piece_counts(window.game.getBugs());
+    window.time_dom = [null, null, null, null]
+    window.time_dom[window.player] = document.getElementById('my_time');
+    window.time_dom[3-window.player] = document.getElementById('their_time');
 
+    for (let i=0; i<4; i++) {
+        if (window.time_dom[i] != null) continue;
+
+        if (i%2 == 0) window.time_dom[i] = document.getElementById('other_board_white_time');
+        else window.time_dom[i] = document.getElementById('other_board_black_time');
+    }
+
+
+    if (window.clock) window.clock.reset();
+    else window.clock = new Clock(window.pool_param, window.inc_param, update_chess_clock);
+
+    update_gui(false);
     play_screen();
 }
 

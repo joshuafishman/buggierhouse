@@ -20,6 +20,8 @@ class Piece{ // abstract class
     constructor(coordinate, side){
         this.coordinate = coordinate; //int[2]
         this.side = side; //bool
+        this.dirty = false;
+        this.was_pawn = false;
     }
 
     static _name = "";
@@ -29,7 +31,7 @@ class Piece{ // abstract class
         return this.constructor._name;
     }
 
-    isMoveAllowed(coordinate){
+    validMove(coordinate){
         return false;
     }
 }
@@ -100,6 +102,10 @@ class Board{
                 pieces[side].push(new Pawn([j, 7*side+sign], side));
             }
         }
+        // pieces[0].push(new King([4, 0], 0));
+        // pieces[1].push(new Rook([5, 1], 1));
+        // pieces[0].push(new Rook([7, 0], 0));
+
         this.pieces = pieces;
     }
 
@@ -116,8 +122,8 @@ class Board{
             } 
             squares.push(file);
         } 
-        for (var side of this.pieces){
-            for (var piece of side){
+        for (let side of this.pieces){
+            for (let piece of side){
                 squares[piece.coordinate[0]][piece.coordinate[1]] = piece;
             }
         }
@@ -171,6 +177,18 @@ class Board{
         return true;
     }
 
+    check_attack(c, exclude_piece, blocked_square=null){
+        for (let piece of this.pieces[+!this.whose_turn]){
+            if (piece !== exclude_piece && piece.validMove(c)){
+                if (piece.name == "n" ||
+                    this.isPathClear(piece.coordinate, c, blocked_square)){                    
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     doMove(side, from_square, to_square){
         if (side != this.whose_turn){
             console.log("eez not your turn");
@@ -220,26 +238,92 @@ class Board{
             return -1;
         } 
 
-        const end_piece = this.getSquare(move.coordinate);
+        const taken_piece = this.getSquare(move.coordinate);
 
-        if (end_piece.side == move.piece.side){
+        if (taken_piece.side == move.piece.side){
             console.log("Friendly fire :(");
             return -1; 
         }
 
         if (!move.isNew){
-            if (!move.piece.isMoveAllowed(move.coordinate)){
+            const move_type = move.piece.validMove(move.coordinate);
+            if (!move_type){
                 console.log("Learn how your pieces move, nitwit");
                 return -1;
             }
+
             if (move.piece.name != "n" &&  !this.isPathClear(move.piece.coordinate, move.coordinate)){
                 console.log("Try going around next time...");
                 return -1;
             }
+            
+            if (move.piece.name == "p"){ // pawn
+                const vector = coordDiff(move.coordinate, move.piece.coordinate);
+                   
+                if (vector[0] == 0){
+                    if (taken_piece !== this.empty){
+                        console.log("You are merely a pawn")
+                        return -1;
+                    }
+                }
+                else{
+                    if (taken_piece === this.empty){
+                        console.log("Don't go off sideways")
+                        return -1;
+                    }
+                }
+            }
+
+            if(move_type[0] == "c"){ // castle
+                let king = move.piece;
+
+                if(king.dirty){
+                    console.log("you dirty boy ;)");
+                    return -1;
+                }
+
+                let rook = null;
+                let king_start = null;
+                let king_end = null;
+                if(move_type[1] == "k"){
+                    rook = this.getSquare([7, king.coordinate[1]]);
+                    king_start = 4;
+                    king_end = 6;
+                }
+                if(move_type[1] == "q"){
+                    rook = this.getSquare([0, king.coordinate[1]]);
+                    king_start = 2;
+                    king_end = 4;
+                }
+
+                if (rook.name != 'r' || rook.dirty){
+                    console.log("Rookie mistake!");
+                    return -1;
+                }
+
+                if (!this.isPathClear(rook.coordinate, king.coordinate)){
+                    console.log("Try going around next time...");
+                    return -1;
+                }
+
+                for(let i = king_start; i <= king_end; i++){
+                    if(this.check_attack([i, king.coordinate[1]], this.empty)){
+                        console.log("Cas(h)(tle) or check?");
+                        return -1;
+                    }
+                }
+
+                if(move_type[1] == "k"){
+                    rook.coordinate = [5, king.coordinate[1]];
+                }
+                if(move_type[1] == "q"){
+                    rook.coordinate = [3, king.coordinate[1]];
+                }
+            }
         }
 
         else{
-            if (end_piece.side == !move.piece.side){
+            if (taken_piece.side == !move.piece.side){
                 console.log("Nice try, but that's not how bughouse works");
                 return -1;
             }
@@ -249,44 +333,22 @@ class Board{
         if (move.piece.name == "k" ){
             king_coordinate = move.coordinate;
         }
-
-        
-        for (var piece of this.pieces[+!this.whose_turn]){
-            if (piece !== end_piece && piece.isMoveAllowed(king_coordinate)){
-                if (move.piece.name == "n" ||
-                    this.isPathClear(piece.coordinate, king_coordinate, move.coordinate)){
-                    
-                    console.log("Protect your commander! Semper Fi!");
-                    return -1;
-                }
-            }
-        }
-
-        if (move.piece.name == "p"){
-            const vector = coordDiff(move.coordinate, move.piece.coordinate);
-
-            
-            if (vector[0] == 0){
-                if (end_piece !== this.empty){
-                    console.log("You are merely a pawn")
-                    return -1;
-                }
-            }
-            else{
-                if (end_piece === this.empty){
-                    console.log("Don't go off sideways")
-                    return -1;
-                }
-            }
+        if (this.check_attack(king_coordinate, taken_piece, move.coordinate)){
+            console.log("Protect your commander! Semper Fi!");
+            return -1;
         }
 
         // move is valid 
-        console.log(end_piece);
+        console.log(taken_piece);
+
+        if (move.piece.name in ["k", "r"]){
+            move.piece.dirty = true;
+        }
 
         if (!move.isNew){
-            if (end_piece !== this.empty){
+            if (taken_piece !== this.empty){
                 this.pieces[+!this.whose_turn] = this.pieces[+!this.whose_turn].filter(
-                    function(p) {return p !== end_piece}) 
+                    function(p) {return p !== taken_piece}) 
             }
             move.piece.coordinate = move.coordinate;
         }
@@ -301,7 +363,7 @@ class Board{
         this.updateSquares();
         this.history.push(this.getBoardString());
         this.whose_turn = !this.whose_turn;
-        return end_piece.name;
+        return taken_piece.name;
     }
     print(){
         this.updateSquares();
@@ -384,7 +446,7 @@ class Empty extends Piece{
 class Pawn extends Piece{
     static _name = "p";
 
-    isMoveAllowed(coordinate){
+    validMove(coordinate){
         const sign = this.side ? -1:1;
         const vector = coordDiff(coordinate, this.coordinate);
 
@@ -403,16 +465,29 @@ class Pawn extends Piece{
 class King extends Piece{
     static _name = "k";
 
-    isMoveAllowed(coordinate){
+    validMove(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
-        return (Math.abs(vector[1]) < 2 && Math.abs(vector[0]) < 2);
+        if (Math.abs(vector[1]) < 2 && Math.abs(vector[0]) < 2){
+            return true;
+        }
+        if(this.coordinate[1] == 7*this.side && this.coordinate[0] == 4){
+            if(vector[1] == 0){
+                if(vector[0] == 2){
+                    return "ck";
+                }
+                if(vector[0] == -2){
+                    return "cq";
+                }
+            }
+        }
+        return false;
     }
 }
 
 class Bishop extends Piece{
     static _name = "b";
 
-    isMoveAllowed(coordinate){
+    validMove(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
         return (Math.abs(vector[1]) == Math.abs(vector[0]));
     }
@@ -421,7 +496,7 @@ class Bishop extends Piece{
 class Rook extends Piece{
     static _name = "r";
 
-    isMoveAllowed(coordinate){
+    validMove(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
         return (vector[1] == 0 || vector[0] == 0);
     }
@@ -430,7 +505,7 @@ class Rook extends Piece{
 class Queen extends Piece{
     static _name = "q";
 
-    isMoveAllowed(coordinate){
+    validMove(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
         return (vector[1] == 0 || vector[0] == 0 || Math.abs(vector[1]) == Math.abs(vector[0]));
     }
@@ -439,7 +514,7 @@ class Queen extends Piece{
 class Knight extends Piece{
     static _name = "n";
 
-    isMoveAllowed(coordinate){
+    validMove(coordinate){
         const vector = coordDiff(coordinate, this.coordinate);
         const larger = Math.max(Math.abs(vector[0]), Math.abs(vector[1]));
         const smaller = Math.min(Math.abs(vector[0]), Math.abs(vector[1]));

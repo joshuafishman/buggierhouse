@@ -70,13 +70,18 @@ class Board{
     // static piece_order = [Queen, Rook, Bishop, Knight, Pawn]
 
     constructor(){
+        this.pieces = [];
         this.whose_turn = 0;
-        this.pieces = this.setup();
+        this.squares_last_updated = -1;
+        this.squares = [];
+        this.num_turns = 0;
+        this.history = [];
         this.extra_pieces = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]; 
-        this.history = [this.serialize()];
+        this.empty = new Empty();
+        this.setup();
     }
 
-    setup(){
+    setupPieces(){
         const pieces = [[], []]
         for (let side = 0; side<2; side++){
             pieces[side].push(new King([4, 7*side], side))  
@@ -95,29 +100,61 @@ class Board{
                 pieces[side].push(new Pawn([j, 7*side+sign], side));
             }
         }
-        return pieces;
+        this.pieces = pieces;
     }
 
-    serialize(){
-        const state = [];
-        for (let i=0; i<64; i++){
-            state.push("-");
+    updateSquares(){
+        if(this.num_turns == this.squares_last_updated){
+            return;
+        }
+        
+        const squares = [];
+        for (let i=0; i<8; i++){
+            let file = [];
+            for (let j=0; j<8; j++){
+                file.push(this.empty);
+            } 
+            squares.push(file);
         } 
-        var side, piece;
-        for (side of this.pieces){
-            for (piece of side){
+        for (var side of this.pieces){
+            for (var piece of side){
+                squares[piece.coordinate[0]][piece.coordinate[1]] = piece;
+            }
+        }
+        this.squares = squares;
+        this.squares_last_updated++;
+        console.log(this.squares_last_updated);
+
+    }
+
+    getSquare(coord){
+        this.updateSquares();
+        return this.squares[coord[0]][coord[1]];
+    }
+
+    getBoardString(){
+        const state = [];
+        for (let i=0; i<8; i++){
+            for (let j=0; j<8; j++){
+                let piece = this.getSquare([i, j]); 
                 let str = piece.name;
                 if (piece.side){
                     str = str.toUpperCase();
                 }
-                state[piece.coordinate[1]*8 + piece.coordinate[0]] = str;
+                state[j*8 + i] = str; // transpose from file-rank to row-col
             }
         }
         // TODO:include extra pieces
         return state;
     }
 
-    isPathClear(c1, c2){
+    setup(){
+        this.setupPieces();
+        this.updateSquares();
+        this.history.push(this.getBoardString());
+    }
+
+    isPathClear(c1, c2, blocked_square=[-1, -1]){
         const vector = coordDiff(c2, c1);
         const len = Math.max(Math.abs(vector[0]), Math.abs(vector[1]));
         const unit_vector = vector.map(Math.sign);
@@ -127,13 +164,8 @@ class Board{
             if (c == c2){
                 break;
             }
-            var side, piece;
-            for (side of this.pieces){
-                for (piece of side){
-                    if (piece.coordinate.toString() == c.toString()){
-                        return false;
-                    }
-                }
+            if (this.getSquare(c) !== this.empty || c.toString() == blocked_square.toString()){
+                return false;
             }
         }
         return true;
@@ -145,12 +177,7 @@ class Board{
             return -1;
         }
 
-        var piece;
-        for (piece of this.pieces[+side]){
-            if (piece.coordinate.toString() == from_square.toString()){
-                break;
-            }
-        }
+        const piece = this.getSquare(from_square);
         console.log(piece);
         
         return this._doMove(new Move(piece, to_square, false));
@@ -184,17 +211,20 @@ class Board{
     }
 
     _doMove(move){
+        if(move.piece === this.empty){
+            console.log("*Flails at air uselessly*");
+            return -1;
+        }
         if (move.piece.side != this.whose_turn){
             console.log("Nice try Mr. Spy");
             return -1;
         } 
 
-        var piece;
-        for (piece of this.pieces[+this.whose_turn]){
-            if (piece.coordinate.toString() == move.coordinate.toString()){
-                console.log("Friendly fire :(");
-                return -1;
-            }
+        const end_piece = this.getSquare(move.coordinate);
+
+        if (end_piece.side == move.piece.side){
+            console.log("Friendly fire :(");
+            return -1; 
         }
 
         if (!move.isNew){
@@ -209,12 +239,9 @@ class Board{
         }
 
         else{
-            var piece;
-            for (piece of this.pieces[+!this.whose_turn]){
-                if (piece.coordinate.toString() == move.coordinate.toString()){
-                    console.log("Nice try, but that's not how bughouse works");
-                    return -1;
-                }
+            if (end_piece.side == !move.piece.side){
+                console.log("Nice try, but that's not how bughouse works");
+                return -1;
             }
         }
 
@@ -223,10 +250,12 @@ class Board{
             king_coordinate = move.coordinate;
         }
 
-        var piece;
-        for (piece of this.pieces[+!this.whose_turn]){
-            if (piece.coordinate.toString() != move.coordinate.toString() && piece.isMoveAllowed(king_coordinate)){
-                if (move.piece.name == "n" ||  this.isPathClear(piece.coordinate, king_coordinate)){
+        
+        for (var piece of this.pieces[+!this.whose_turn]){
+            if (piece !== end_piece && piece.isMoveAllowed(king_coordinate)){
+                if (move.piece.name == "n" ||
+                    this.isPathClear(piece.coordinate, king_coordinate, move.coordinate)){
+                    
                     console.log("Protect your commander! Semper Fi!");
                     return -1;
                 }
@@ -236,22 +265,15 @@ class Board{
         if (move.piece.name == "p"){
             const vector = coordDiff(move.coordinate, move.piece.coordinate);
 
-            let intersect_piece = null;
-            var piece;
-            for (piece of this.pieces[+!this.whose_turn]){
-                if (piece.coordinate.toString() == move.coordinate.toString()){
-                    intersect_piece = piece;
-                }
-            }
             
             if (vector[0] == 0){
-                if (intersect_piece != null){
+                if (end_piece !== this.empty){
                     console.log("You are merely a pawn")
                     return -1;
                 }
             }
             else{
-                if (intersect_piece === null){
+                if (end_piece === this.empty){
                     console.log("Don't go off sideways")
                     return -1;
                 }
@@ -259,18 +281,14 @@ class Board{
         }
 
         // move is valid 
-        let taken_piece = 0;
+        console.log(end_piece);
 
         if (!move.isNew){
-            move.piece.coordinate = move.coordinate;
-            for (let i = 0; i<this.pieces[+!this.whose_turn].length; i++){
-                const piece = this.pieces[+!this.whose_turn][i];
-                if (piece.coordinate.toString() == move.coordinate.toString()){
-                    taken_piece = piece.name;
-                    console.log(this.pieces[+!this.whose_turn].splice(i, 1));
-                    i--;
-                }
+            if (end_piece !== this.empty){
+                this.pieces[+!this.whose_turn] = this.pieces[+!this.whose_turn].filter(
+                    function(p) {return p !== end_piece}) 
             }
+            move.piece.coordinate = move.coordinate;
         }
         else{
             this.pieces[+this.whose_turn].push(move.piece);
@@ -278,15 +296,17 @@ class Board{
             const extra_idx = Board.bug_order.search(move.piece.name);
             this.extra_pieces[+this.whose_turn][extra_idx]--;
         }
-                
-        this.history.push(this.serialize());
-
+        
+        this.num_turns++;
+        this.updateSquares();
+        this.history.push(this.getBoardString());
         this.whose_turn = !this.whose_turn;
-        return taken_piece;
+        return end_piece.name;
     }
     print(){
+        this.updateSquares();
         console.log(this.extra_pieces[0]);
-        const b = this.serialize();
+        const b = this.getBoardString();
         let out = ""
         for (let i = 0; i<8; i++){
             out += b.slice(i*8, i*8+8).reduce(function(a, b){return a+ " " + b;});
@@ -294,7 +314,6 @@ class Board{
         }
         console.log(out);
         console.log(this.extra_pieces[1]);
-
     }
 }           
 
@@ -329,7 +348,7 @@ class Bughouse{
             return false;
         }
 
-        if (out != 0){
+        if (out != "-"){
             const extra_idx = Board.bug_order.search(out);
             if (extra_idx != -1){
                 this.boards[+!board_id].extra_pieces[+!side][extra_idx]++;
@@ -355,7 +374,12 @@ class Bughouse{
 
 
 ///////////////// PIECE IMPLEMENTATIONS ???????????????????????????
-
+class Empty extends Piece{
+    constructor(){
+        super(null, null);
+    }
+    static _name = "-";
+}
 
 class Pawn extends Piece{
     static _name = "p";

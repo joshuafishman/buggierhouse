@@ -207,6 +207,13 @@ function start_game() {
             
             if (!is_valid) return 'snapback';
 
+            send_msg('move', {
+                'player':window.player,
+                'src':source,
+                'target':target,
+                'piece':piece
+            });
+
             update_gui(false);
 
             if (window.game.isOver()) {
@@ -215,13 +222,8 @@ function start_game() {
             }
 
             window.clock.hit(window.player);
-
-            send_msg('move', {
-                'player':window.player,
-                'src':source,
-                'target':target,
-                'piece':piece
-            });
+            
+            return 'trash'
         }
     });
 

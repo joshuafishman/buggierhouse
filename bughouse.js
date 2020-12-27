@@ -80,8 +80,9 @@ class Board{
         //     }
         // }
         pieces[0].push(new King([4, 0], 0));
-        pieces[1].push(new Pawn([5, 1], 1));
-        // pieces[0].push(new Rook([7, 0], 0));
+        pieces[1].push(new King([4, 7], 1));
+        // pieces[1].push(new Pawn([5, 1], 1));
+        pieces[0].push(new Rook([7, 0], 0));
 
         this.pieces = pieces;
     }
@@ -332,7 +333,7 @@ class Board{
                 this.pieces[+this.whose_turn] = this.pieces[+this.whose_turn].filter(
                     function(p) {return p !== move.piece}); 
 
-                move.piece = Queen(move.piece.coordinate, move.piece.side);
+                move.piece = new Queen(move.piece.coordinate, move.piece.side);
                 move.piece.was_pawn = true;
                 this.pieces[+this.whose_turn].push(move.piece);    
             }
@@ -405,7 +406,7 @@ class Bughouse{
             out = board.doMove(side, this.parse_square(from_square), this.parse_square(to_square));
         }
 
-        if (out.name == -1){
+        if (out == -1){
             return false;
         }
 

@@ -62,25 +62,25 @@ class Board{
 
     setupPieces(){
         const pieces = [[], []]
-        for (let side = 0; side<2; side++){
-            pieces[side].push(new King([4, 7*side], side))  
-            pieces[side].push(new Queen([3, 7*side], side)) 
+        // for (let side = 0; side<2; side++){
+        //     pieces[side].push(new King([4, 7*side], side))  
+        //     pieces[side].push(new Queen([3, 7*side], side)) 
             
-            for (let j =0; j<2; j++){
-                let sign = j ? -1:1;
-                pieces[side].push(new Rook([7*j + 0*sign, 7*side], side));
-                pieces[side].push(new Knight([7*j + 1*sign, 7*side], side));
-                pieces[side].push(new Bishop([7*j + 2*sign, 7*side], side));
-            }
+        //     for (let j =0; j<2; j++){
+        //         let sign = j ? -1:1;
+        //         pieces[side].push(new Rook([7*j + 0*sign, 7*side], side));
+        //         pieces[side].push(new Knight([7*j + 1*sign, 7*side], side));
+        //         pieces[side].push(new Bishop([7*j + 2*sign, 7*side], side));
+        //     }
 
         
-            let sign = side ? -1:1;
-            for (let j =0; j<8; j++){
-                pieces[side].push(new Pawn([j, 7*side+sign], side));
-            }
-        }
-        // pieces[0].push(new King([4, 0], 0));
-        // pieces[1].push(new Rook([5, 1], 1));
+        //     let sign = side ? -1:1;
+        //     for (let j =0; j<8; j++){
+        //         pieces[side].push(new Pawn([j, 7*side+sign], side));
+        //     }
+        // }
+        pieces[0].push(new King([4, 0], 0));
+        pieces[1].push(new Pawn([5, 1], 1));
         // pieces[0].push(new Rook([7, 0], 0));
 
         this.pieces = pieces;
@@ -152,7 +152,7 @@ class Board{
         return true;
     }
 
-    check_attack(c, exclude_piece, blocked_square=null){
+    check_attack(c, exclude_piece, blocked_square=[-1, -1]){
         for (let piece of this.pieces[+!this.whose_turn]){
             if (piece !== exclude_piece && piece.validMove(c)){
                 if (piece.name == "n" ||
@@ -323,9 +323,19 @@ class Board{
         if (!move.isNew){
             if (taken_piece !== this.empty){
                 this.pieces[+!this.whose_turn] = this.pieces[+!this.whose_turn].filter(
-                    function(p) {return p !== taken_piece}) 
+                    function(p) {return p !== taken_piece});
             }
             move.piece.coordinate = move.coordinate;
+
+            if (move.piece.name == 'p' && move.piece.coordinate[1] in [0, 7]){
+
+                this.pieces[+this.whose_turn] = this.pieces[+this.whose_turn].filter(
+                    function(p) {return p !== move.piece}); 
+
+                move.piece = Queen(move.piece.coordinate, move.piece.side);
+                move.piece.was_pawn = true;
+                this.pieces[+this.whose_turn].push(move.piece);    
+            }
         }
         else{
             this.pieces[+this.whose_turn].push(move.piece);
@@ -338,7 +348,7 @@ class Board{
         this.updateSquares();
         this.history.push(this.getBoardString());
         this.whose_turn = !this.whose_turn;
-        return taken_piece.name;
+        return taken_piece;
     }
     print(){
         this.updateSquares();
@@ -395,12 +405,12 @@ class Bughouse{
             out = board.doMove(side, this.parse_square(from_square), this.parse_square(to_square));
         }
 
-        if (out == -1){
+        if (out.name == -1){
             return false;
         }
 
-        if (out != "-"){
-            const extra_idx = Board.bug_order.search(out);
+        if (out.name != "-"){
+            const extra_idx = Board.bug_order.search(out.was_pawn ? 'p':out.name);
             if (extra_idx != -1){
                 this.boards[+!board_id].extra_pieces[+!side][extra_idx]++;
             }

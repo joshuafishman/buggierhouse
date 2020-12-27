@@ -18,6 +18,10 @@ body, html, #play_screen {
   
 }
 
+#resign {
+    float: left;
+}
+
 #my_board {
     width:600px;
 }

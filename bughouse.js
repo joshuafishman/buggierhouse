@@ -152,7 +152,7 @@ class Board{
         return true;
     }
 
-    check_attack(c, exclude_piece, blocked_square=null){
+    check_attack(c, exclude_piece, blocked_square=[-1, -1]){
         for (let piece of this.pieces[+!this.whose_turn]){
             if (piece !== exclude_piece && piece.validMove(c)){
                 if (piece.name == "n" ||

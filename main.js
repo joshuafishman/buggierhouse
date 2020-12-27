@@ -105,7 +105,6 @@ function handle_message(event) {
     } else if (data['msg'] == 'game_over') {
         const msg = data['victory_msg'];
 
-        clearInterval(window.chessInterval);
         alert(`Game over!\n${msg}`);
         start_game();
     } else if (data['msg'] == 'game_created') {
@@ -156,6 +155,13 @@ function send_msg(msg, data) {
     window.sock.send(JSON.stringify(data));
 }
 
+function resign() {
+    const msg = `The ${window.player%2==0 ? 'white' : 'black'} player on team ${1+(window.player>=2)} resigned.`;
+    send_msg('game_over', {'victory_msg':msg});
+    alert('You resigned.');
+    start_game();
+}
+
 function we_won_the_game() {
     // Game is over, we won!
     let victory_message = prompt('You won! Type your victory message below.');
@@ -163,7 +169,6 @@ function we_won_the_game() {
     if (victory_message == null) victory_message = `Team ${1+(window.player >= 2)} won!`;
     send_msg('game_over', {'victory_msg':victory_message});
     
-    clearInterval(window.chessInterval);
     start_game();        
 }
 

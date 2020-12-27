@@ -37,8 +37,6 @@ async def process_request(sever_root, path, request_headers):
     # Validate the path
     if os.path.commonpath((sever_root, full_path)) != sever_root or \
             not os.path.exists(full_path) or not os.path.isfile(full_path):
-        print("HTTP GET {} 404 NOT FOUND".format(path))
-        print(full_path)
         return HTTPStatus.NOT_FOUND, [], b'404 NOT FOUND'
 
     # Guess file content type
@@ -49,7 +47,6 @@ async def process_request(sever_root, path, request_headers):
     # Read the whole file into memory and send it out
     body = open(full_path, 'rb').read()
     response_headers.append(('Content-Length', str(len(body))))
-    print("HTTP GET {} 200 OK".format(path))
     return HTTPStatus.OK, response_headers, body
 
 

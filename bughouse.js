@@ -80,8 +80,8 @@ class Board{
         //     }
         // }
         pieces[0].push(new King([4, 0], 0));
-        pieces[1].push(new Pawn([5, 1], 1));
-        // pieces[0].push(new Rook([7, 0], 0));
+        // pieces[1].push(new Pawn([5, 1], 1));
+        pieces[0].push(new Rook([7, 0], 0));
 
         this.pieces = pieces;
     }
@@ -309,6 +309,18 @@ class Board{
             king_coordinate = move.coordinate;
         }
         if (this.check_attack(king_coordinate, taken_piece, move.coordinate)){
+
+            // TODO: checkmate
+            // checking_pieces = []
+            // for (let piece of this.pieces[+!this.whose_turn]){
+            //     if (piece !== exclude_piece && piece.validMove(c)){
+            //         if (piece.name == "n" ||
+            //             this.isPathClear(piece.coordinate, c, blocked_square)){                    
+            //             checking_pieces.push(piece);
+            //         }
+            //     }
+            // }
+
             console.log("Protect your commander! Semper Fi!");
             return -1;
         }
@@ -316,21 +328,21 @@ class Board{
         // move is valid 
         console.log(taken_piece);
 
-        if (move.piece.name in ["k", "r"]){
+        if (move.piece.name == "k" || move.piece.name == "r"){
             move.piece.dirty = true;
         }
 
         if (!move.isNew){
             if (taken_piece !== this.empty){
                 this.pieces[+!this.whose_turn] = this.pieces[+!this.whose_turn].filter(
-                    function(p) {return p !== taken_piece});
+                    p => p !== taken_piece);
             }
             move.piece.coordinate = move.coordinate;
 
-            if (move.piece.name == 'p' && move.piece.coordinate[1] in [0, 7]){
+            if (move.piece.name == 'p' && (move.piece.coordinate[1] == 0 || move.piece.coordinate[1] == 7)){
 
                 this.pieces[+this.whose_turn] = this.pieces[+this.whose_turn].filter(
-                    function(p) {return p !== move.piece}); 
+                    p => p !== move.piece); 
 
                 move.piece = Queen(move.piece.coordinate, move.piece.side);
                 move.piece.was_pawn = true;

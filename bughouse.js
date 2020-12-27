@@ -44,29 +44,6 @@ class Move{
     }
 }
 
-class Clock{
-    constructor(time_remaining, start_time, stopped){
-        this.time_remaining = time_remaining;
-        this.start_time = start_time;
-        this.stopped = stopped;
-    }
-    get_time_remaining(){
-        if (!this.stopped){
-            return this.time_remaining- (this.start_time - seconds());
-        }
-        else{
-            return this.time_remaining;
-        }
-    }
-    set_time_remaining(time){
-        this.time_remaining = time;
-    }
-    hit(){
-        this.stopped = !this.stopped;
-        this.start_time = seconds();
-    }
-}
-
 class Board{
     static bug_order = "qrbnp"
     // static piece_order = [Queen, Rook, Bishop, Knight, Pawn]
@@ -129,8 +106,6 @@ class Board{
         }
         this.squares = squares;
         this.squares_last_updated++;
-        console.log(this.squares_last_updated);
-
     }
 
     getSquare(coord){
@@ -377,6 +352,20 @@ class Board{
         console.log(out);
         console.log(this.extra_pieces[1]);
     }
+
+    getDict() {
+        const d = {};
+        for (let side of this.pieces) {
+            for (let piece of side) {
+                const loc = (piece.coordinate[0]+10).toString(36) + (piece.coordinate[1]+1).toString();
+                const color = piece.side == 0 ? 'w' : 'b';
+
+                d[loc] = color + piece.name.toUpperCase();
+            }
+        }
+
+        return d;
+    }
 }           
 
 class Bughouse{
@@ -431,6 +420,24 @@ class Bughouse{
                this.boards[1].extra_pieces[1],
                this.boards[1].extra_pieces[0],
                this.boards[0].extra_pieces[1]];
+    }
+
+    getTurns() {
+        // zero indexed turn numbers
+        return [this.boards[0].history.length - 1, this.boards[1].history.length - 1];
+    }
+
+    serialize() {
+        // TODO: return a string that can be parsed with deserialize() into the same thing
+        return "";
+    }
+
+    deserialize(serialization) {
+        // TODO: parse the serialization and update the state
+    }
+
+    getBoardDicts() {        
+        return [this.boards[0].getDict(), this.boards[1].getDict()];
     }
 }
 
@@ -520,4 +527,42 @@ class Knight extends Piece{
         const smaller = Math.min(Math.abs(vector[0]), Math.abs(vector[1]));
         return (larger == 2 && smaller == 1);
     }
+}
+
+class Clock {
+    constructor(pool, inc, on_update) {
+        this.pool = pool
+        this.inc = inc
+        this.on_update = on_update
+
+        this.reset();
+
+        this.interval = setInterval(() => this.update(), 40);
+    }
+
+    update() {
+        const temp_time = new Date().getTime();
+
+        for (let i=0; i<4; i++) {
+            if (this.clock_times[i] == null) continue;
+
+            const delta = temp_time - this.clock_times[i];
+            this.clock_times[i] = temp_time;
+            this.clocks[i] -= delta/1000;
+        }
+
+        if (this.on_update) this.on_update(this.clocks);
+    }
+
+    reset() {
+        this.clocks = [this.pool, this.pool, this.pool, this.pool]
+        this.clock_times = [null, null, null, null]
+    }
+
+    hit(player) {
+        this.clocks[player] += this.inc;
+        this.clock_times[player]   = null;
+        this.clock_times[3-player] = new Date().getTime();
+    }
+
 }

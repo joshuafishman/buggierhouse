@@ -156,10 +156,12 @@ function send_msg(msg, data) {
 }
 
 function resign() {
-    const msg = `The ${window.player%2==0 ? 'white' : 'black'} player on team ${1+(window.player>=2)} resigned.`;
-    send_msg('game_over', {'victory_msg':msg});
-    alert('You resigned.');
-    start_game();
+    if (confirm("Are you sure you want to RESIGN?")) {
+        const msg = `The ${window.player % 2 == 0 ? 'white' : 'black'} player on team ${1 + (window.player >= 2)} resigned.`;
+        send_msg('game_over', { 'victory_msg': msg });
+        alert('You resigned.');
+        start_game();
+    }
 }
 
 function we_won_the_game() {

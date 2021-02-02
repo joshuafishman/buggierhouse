@@ -144,7 +144,7 @@ class Board {
     this.history.push(this.getBoardString());
   }
 
-  isPathClear(c1, c2, blocked_square = [-1, -1]) {
+  isPathClear(c1, c2) {
     const vector = coordDiff(c2, c1);
     const len = Math.max(Math.abs(vector[0]), Math.abs(vector[1]));
     const unit_vector = vector.map(Math.sign);
@@ -154,22 +154,19 @@ class Board {
       if (c == c2) {
         break;
       }
-      if (
-        this.getSquare(c) !== this.empty ||
-        (blocked_square && c.toString() == blocked_square.toString())
-      ) {
+      if (this.getSquare(c) !== this.empty) {
         return false;
       }
     }
     return true;
   }
 
-  check_attack(turn, c, exclude_piece, blocked_square = [-1, -1]) {
+  check_attack(turn, c) {
     for (let piece of this.pieces[turn]) {
-      if (piece !== exclude_piece && piece.validAttack(c)) {
+      if (piece.validAttack(c)) {
         if (
-          piece.name == "n" ||
-          this.isPathClear(piece.coordinate, c, blocked_square)
+          piece.name == Knight._name ||
+          this.isPathClear(piece.coordinate, c)
         ) {
           return true;
         }
@@ -314,13 +311,7 @@ class Board {
         }
 
         for (let i = king_start; i <= king_end; i++) {
-          if (
-            this.check_attack(
-              +!this.whose_turn,
-              [i, king.coordinate[1]],
-              this.empty
-            )
-          ) {
+          if (this.check_attack(+!this.whose_turn, [i, king.coordinate[1]])) {
             // console.log("Cas(h)(tle) or check?");
             return -1;
           }
@@ -346,14 +337,7 @@ class Board {
     this.executeMove(move, taken_piece);
 
     let king_coordinate = this.pieces[+this.whose_turn][0].coordinate;
-    if (
-      this.check_attack(
-        +!this.whose_turn,
-        king_coordinate,
-        taken_piece,
-        move.coordinate
-      )
-    ) {
+    if (this.check_attack(+!this.whose_turn, king_coordinate)) {
       this.restoreState(prior_state_json);
       // console.log("Protect your commander! Semper Fi!");
       return -1;
@@ -450,7 +434,7 @@ class Board {
 
     let king_coordinate = this.pieces[in_danger][0].coordinate;
 
-    if (this.check_attack(attacker, king_coordinate, null, null)) {
+    if (this.check_attack(attacker, king_coordinate)) {
       let any_escape_move = false;
 
       for (
@@ -474,14 +458,7 @@ class Board {
               this._doMove(new Move(piece, target_coordinate, false));
 
               let new_king_coordinate = this.pieces[in_danger][0].coordinate;
-              if (
-                !this.check_attack(
-                  attacker,
-                  new_king_coordinate,
-                  null,
-                  null
-                )
-              ) {
+              if (!this.check_attack(attacker, new_king_coordinate)) {
                 console.log(
                   "Escape by moving the",
                   piece,
@@ -518,14 +495,7 @@ class Board {
                 if (piece) {
                   this._doMove(new Move(piece, target_coordinate, true));
 
-                  if (
-                    !this.check_attack(
-                      attacker,
-                      king_coordinate,
-                      null,
-                      null
-                    )
-                  ) {
+                  if (!this.check_attack(attacker, king_coordinate)) {
                     console.log(
                       "Escape by placing a",
                       piece,
@@ -551,6 +521,10 @@ class Board {
   }
 }
 
+function boardId(player_id) {
+  return Boolean(Math.sign(player_id % 3));
+}
+
 class Bughouse {
   constructor() {
     this.boards = [new Board(), new Board()];
@@ -564,9 +538,13 @@ class Bughouse {
   }
 
   doMove(player_id, from_square, to_square, piece_type) {
-    const board_id = Boolean(Math.sign(player_id % 3));
+    const board_id = boardId(player_id % 3);
     const board = this.boards[+board_id];
     const side = Boolean(player_id % 2);
+
+    if (board_id == boardId(window.player)) {
+      new Audio("sound/whack.mp3").play();
+    }
 
     let out = null;
     if (from_square == "spare") {
@@ -670,7 +648,7 @@ class Pawn extends Piece {
 
   validAttack(coordinate) {
     const vector = coordDiff(coordinate, this.coordinate);
-    return this.validMove(coordinate) && vector[0] == 0;
+    return this.validMove(coordinate) && vector[0] != 0;
   }
 
   pieceTakenByEnPassant(board, coordinate) {

@@ -16,7 +16,6 @@ function seconds() {
 
 //////////////// CHESS FUNCTIONALITY ///////////////////////////
 
-
 class Piece {
   // abstract class
   constructor(coordinate, side) {
@@ -24,6 +23,7 @@ class Piece {
     this.side = side; //bool
     this.dirty = false;
     this.was_pawn = false;
+    this.move_pawn_jumped_two_spaces = null;
     this.name = this.constructor._name;
   }
 
@@ -77,19 +77,19 @@ class Board {
     const pieces = [[], []];
     for (let side = 0; side < 2; side++) {
       pieces[side].push(new King([4, 7 * side], side));
-        pieces[side].push(new Queen([3, 7 * side], side));
+      pieces[side].push(new Queen([3, 7 * side], side));
 
-        for (let j = 0; j < 2; j++) {
-          let sign = j ? -1 : 1;
-          pieces[side].push(new Rook([7 * j + 0 * sign, 7 * side], side));
-          pieces[side].push(new Knight([7 * j + 1 * sign, 7 * side], side));
-          pieces[side].push(new Bishop([7 * j + 2 * sign, 7 * side], side));
-        }
+      for (let j = 0; j < 2; j++) {
+        let sign = j ? -1 : 1;
+        pieces[side].push(new Rook([7 * j + 0 * sign, 7 * side], side));
+        pieces[side].push(new Knight([7 * j + 1 * sign, 7 * side], side));
+        pieces[side].push(new Bishop([7 * j + 2 * sign, 7 * side], side));
+      }
 
-        let sign = side ? -1 : 1;
-        for (let j = 0; j < 8; j++) {
-          pieces[side].push(new Pawn([j, 7 * side + sign], side));
-        }
+      let sign = side ? -1 : 1;
+      for (let j = 0; j < 8; j++) {
+        pieces[side].push(new Pawn([j, 7 * side + sign], side));
+      }
     }
 
     this.pieces = pieces;
@@ -226,12 +226,14 @@ class Board {
     }
 
     const piece_on_target_square = this.getSquare(move.coordinate);
-    const try_en_passant = piece_on_target_square == this.empty && move.piece.name == Pawn._name && move.coordinate[0] != move.piece.coordinate[0];
-    const taken_piece =
-      try_en_passant
-        ? move.piece.pieceTakenByEnPassant(this, move.coordinate)
-        : piece_on_target_square;
-    
+    const try_en_passant =
+      piece_on_target_square == this.empty &&
+      move.piece.name == Pawn._name &&
+      move.coordinate[0] != move.piece.coordinate[0];
+    const taken_piece = try_en_passant
+      ? move.piece.pieceTakenByEnPassant(this, move.coordinate)
+      : piece_on_target_square;
+
     if (taken_piece.side == move.piece.side) {
       console.log("Friendly fire :(");
       return -1;
@@ -344,7 +346,6 @@ class Board {
     }
 
     // move is valid
-    console.log(taken_piece);
 
     if (move.piece.name == "k" || move.piece.name == "r") {
       move.piece.dirty = true;
@@ -356,8 +357,18 @@ class Board {
           (p) => p !== taken_piece
         );
       }
+
+      // Moved 2 spaces
+      if (
+        move.piece.name == Pawn._name &&
+        Math.abs(move.piece.coordinate[1] - move.coordinate[1]) > 1
+      ) {
+        move.piece.move_pawn_jumped_two_spaces = this.history.length;
+      }
+
       move.piece.coordinate = move.coordinate;
 
+      // Promotion
       if (
         move.piece.name == Pawn._name &&
         (move.piece.coordinate[1] == 0 || move.piece.coordinate[1] == 7)
@@ -495,7 +506,7 @@ class Bughouse {
     this.boards = d;
   }
 
-    getBoardDicts() {
+  getBoardDicts() {
     return [this.boards[0].getDict(), this.boards[1].getDict()];
   }
 }
@@ -533,12 +544,15 @@ class Pawn extends Piece {
 
   pieceTakenByEnPassant(board, coordinate) {
     const sign = this.side ? 1 : -1;
-    const targetCoordinate = [
-      coordinate[0],
-      coordinate[1] + sign,
-    ];
+    const targetCoordinate = [coordinate[0], coordinate[1] + sign];
 
-    return board.getSquare(targetCoordinate);
+    const piece = board.getSquare(targetCoordinate);
+
+    if (piece.move_pawn_jumped_two_spaces == board.history.length - 1) {
+      return piece;
+    } else {
+      return board.empty;
+    }
   }
 }
 
@@ -606,7 +620,6 @@ class Knight extends Piece {
   }
 }
 
-
 const NAME_TO_PIECE = {
   [Pawn._name]: Pawn,
   [King._name]: King,
@@ -614,7 +627,7 @@ const NAME_TO_PIECE = {
   [Rook._name]: Rook,
   [Bishop._name]: Bishop,
   [Knight._name]: Knight,
-}
+};
 
 class Clock {
   constructor(pool, inc, on_update) {

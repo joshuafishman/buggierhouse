@@ -62,6 +62,7 @@ class Board {
       [0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0],
     ];
+    this.game_over = false;
     this.empty = new Empty();
     this.setup();
   }
@@ -474,7 +475,7 @@ class Bughouse {
   }
 
   isOver() {
-    return false;
+    return this.game_over;
   }
 
   print() {

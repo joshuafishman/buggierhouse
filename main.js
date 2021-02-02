@@ -18,8 +18,10 @@ function update_chess_clock(clocks) {
         return;
     }
 
-    for (let i=0; i<4; i++) {
-        window.time_dom[i].innerText = `${Math.floor(clocks[i]/60)}:${(clocks[i]%60).toFixed(1)}`;
+    for (let i = 0; i < 4; i++) {
+        const min = Math.floor(clocks[i] / 60);
+        const sec = (""+(clocks[i] % 60).toFixed(1)).padStart(4, '0');
+        window.time_dom[i].innerText = `${min}:${sec}`;
     }
 }
 

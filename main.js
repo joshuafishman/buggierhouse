@@ -82,6 +82,15 @@ function update_gui(animate) {
     update_piece_counts(window.game.getBugs());
 }
 
+const BUGS = [
+    "https://cdn-prod.servicemaster.com/-/media/Feature/Terminix/Blogs/bug-phobia.jpg?rev=b54f9e73c12d41989649328210fe3078&h=400&w=600&la=en&hash=750A83B3C44975D29E31D6698213A086",
+    "http://www.thewhiskeyjournal.com/wp-content/uploads/2015/10/centipede.jpg",
+    "https://i.pinimg.com/originals/c3/45/c5/c345c5ae260b27c2c92809aecf40054c.jpg",
+    "https://media.npr.org/assets/img/2014/03/07/bug-wrangler-2-8af8c04f6674d480e0a5e43b014889875e7ea44c-s800-c85.jpg",
+    "https://images2.minutemediacdn.com/image/upload/c_crop,h_1706,w_3036,x_0,y_241/f_auto,q_auto,w_1100/v1554752078/shape/mentalfloss/istock-483749258.jpg",
+    "https://post.medicalnewstoday.com/wp-content/uploads/sites/3/2020/01/327250_2200-1200x628.jpg",
+]
+
 function handle_message(event) {
     const data = JSON.parse(event.data);
 
@@ -109,6 +118,12 @@ function handle_message(event) {
 
         alert(`Game over!\n${msg}`);
         start_game();
+    } else if (data['msg'] == 'bug') {
+        trigger_bug(data['bug_i']);
+    } else if (data['msg'] == 'flies') {
+        trigger_flies();
+    } else if (data['msg'] == 'spiders') {
+        trigger_spiders();
     } else if (data['msg'] == 'game_created') {
         window.location.hash =  "#" + encodeURIComponent(data['game_id']);
 
@@ -145,6 +160,9 @@ function handle_message(event) {
         window.clock.clocks = data['clocks'];
         window.clock.clock_times = data['clock_times'];
 
+        console.log(window.game.isOver());
+
+
         // Set GUIs
         update_gui(false);
     } else {
@@ -164,6 +182,37 @@ function resign() {
         alert('You resigned.');
         start_game();
     }
+}
+
+window.bug = (i = Math.floor(Math.random() * BUGS.length)) => {
+    send_msg('bug', { 'bug_i': i });
+    trigger_bug(i);
+}
+
+window.flies = () => {
+    send_msg('flies', {});
+    trigger_flies();
+}
+
+window.spiders = () => {
+    send_msg('spiders', {});
+    trigger_spiders();
+}
+
+function trigger_bug(i) {
+    const url = BUGS[i];
+    document.body.style.background = 'url("' + url + '")';
+    setTimeout(() => {
+        document.body.style.background = "";
+    }, 100);
+}
+
+function trigger_flies() {
+    new BugController({'minBugs':0, 'maxBugs':5, 'mouseOver':'die'});
+}
+
+function trigger_spiders() {
+    new SpiderController({'minBugs':0, 'maxBugs':5, 'mouseOver':'die'});
 }
 
 function we_won_the_game() {

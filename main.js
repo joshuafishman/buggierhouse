@@ -202,7 +202,8 @@ function start_game() {
                 if (count == 0) return false;
             }
         },
-        onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+        onDrop: function (source, target, piece, newPos, oldPos, orientation) {
+            if (target == 'offboard') return 'snapback';
             const is_valid = window.game.doMove(window.player, source, target, piece);
             
             if (!is_valid) return 'snapback';

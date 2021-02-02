@@ -198,7 +198,7 @@ class Board {
     if (piece_name == "b") {
       piece = new Bishop(to_square, side);
     }
-    if (piece_name == Pawn._name) {
+    if (piece_name == Pawn._name && to_square[1] != 0 && to_square[1] != 7) {
       piece = new Pawn(to_square, side);
     }
     if (piece_name == "k") {
@@ -208,7 +208,11 @@ class Board {
       piece = new Rook(to_square, side);
     }
 
-    return this._doMove(new Move(piece, to_square, true));
+    if (piece != null) {
+      return this._doMove(new Move(piece, to_square, true));
+    } else {
+      return -1;
+    }
   }
 
   _doMove(move) {

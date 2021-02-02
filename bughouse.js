@@ -325,11 +325,6 @@ class Board {
       }
     }
 
-    let king_coordinate = this.pieces[+this.whose_turn][0].coordinate;
-    if (move.piece.name == "k") {
-      king_coordinate = move.coordinate;
-    }
-    if (this.check_attack(king_coordinate, taken_piece, move.coordinate)) {
       // TODO: checkmate
       // checking_pieces = []
       // for (let piece of this.pieces[+!this.whose_turn]){
@@ -340,13 +335,10 @@ class Board {
       //         }
       //     }
       // }
-
-      console.log("Protect your commander! Semper Fi!");
-      return -1;
-    }
-
-    // move is valid
-
+    
+    const prior_state = JSON.stringify(this);
+    
+    // Move is valid, move it
     if (move.piece.name == "k" || move.piece.name == "r") {
       move.piece.dirty = true;
     }
@@ -387,6 +379,17 @@ class Board {
       const extra_idx = Board.bug_order.search(move.piece.name);
       this.extra_pieces[+this.whose_turn][extra_idx]--;
     }
+
+    let king_coordinate = this.pieces[+this.whose_turn][0].coordinate;
+    if (this.check_attack(king_coordinate, taken_piece, move.coordinate)) {
+      const recovered_state = JSON.parse(prior_state);
+      Object.assign(this, recovered_state);
+      this.pieces = this.pieces.map((p) => p.map(Piece.deserialize));
+
+      console.log("Protect your commander! Semper Fi!");
+      return -1;
+    }
+
 
     this.num_turns++;
     this.history.push(this.getBoardString());

@@ -16,6 +16,7 @@ function seconds() {
 
 //////////////// CHESS FUNCTIONALITY ///////////////////////////
 
+
 class Piece {
   // abstract class
   constructor(coordinate, side) {
@@ -23,13 +24,16 @@ class Piece {
     this.side = side; //bool
     this.dirty = false;
     this.was_pawn = false;
+    this.name = this.constructor._name;
   }
 
   static _name = "";
   // Piece names: Pawn=p, Bishop=b, Knight=k, Rook=r, Queen=q, King=K
 
-  get name() {
-    return this.constructor._name;
+  static deserialize(s) {
+    const p = new NAME_TO_PIECE[s.name]();
+    Object.assign(p, s);
+    return p;
   }
 
   validMove(coordinate) {
@@ -52,8 +56,6 @@ class Board {
   constructor() {
     this.pieces = [];
     this.whose_turn = 0;
-    this.squares_last_updated = -1;
-    this.squares = [];
     this.num_turns = 0;
     this.history = [];
     this.extra_pieces = [
@@ -64,37 +66,36 @@ class Board {
     this.setup();
   }
 
+  static deserialize(s) {
+    const b = new Board();
+    Object.assign(b, s);
+    b.pieces = b.pieces.map((p) => p.map(Piece.deserialize));
+    return b;
+  }
+
   setupPieces() {
     const pieces = [[], []];
     for (let side = 0; side < 2; side++) {
       pieces[side].push(new King([4, 7 * side], side));
-      pieces[side].push(new Queen([3, 7 * side], side));
+        pieces[side].push(new Queen([3, 7 * side], side));
 
-      for (let j = 0; j < 2; j++) {
-        let sign = j ? -1 : 1;
-        pieces[side].push(new Rook([7 * j + 0 * sign, 7 * side], side));
-        pieces[side].push(new Knight([7 * j + 1 * sign, 7 * side], side));
-        pieces[side].push(new Bishop([7 * j + 2 * sign, 7 * side], side));
-      }
+        for (let j = 0; j < 2; j++) {
+          let sign = j ? -1 : 1;
+          pieces[side].push(new Rook([7 * j + 0 * sign, 7 * side], side));
+          pieces[side].push(new Knight([7 * j + 1 * sign, 7 * side], side));
+          pieces[side].push(new Bishop([7 * j + 2 * sign, 7 * side], side));
+        }
 
-      let sign = side ? -1 : 1;
-      for (let j = 0; j < 8; j++) {
-        pieces[side].push(new Pawn([j, 7 * side + sign], side));
-      }
+        let sign = side ? -1 : 1;
+        for (let j = 0; j < 8; j++) {
+          pieces[side].push(new Pawn([j, 7 * side + sign], side));
+        }
     }
-    // pieces[0].push(new King([4, 0], 0));
-    // pieces[1].push(new King([4, 7], 1));
-    // // pieces[1].push(new Pawn([5, 1], 1));
-    // pieces[0].push(new Rook([7, 0], 0));
 
     this.pieces = pieces;
   }
 
-  updateSquares() {
-    if (this.num_turns == this.squares_last_updated) {
-      return;
-    }
-
+  getSquares() {
     const squares = [];
     for (let i = 0; i < 8; i++) {
       let file = [];
@@ -103,18 +104,19 @@ class Board {
       }
       squares.push(file);
     }
+
     for (let side of this.pieces) {
       for (let piece of side) {
         squares[piece.coordinate[0]][piece.coordinate[1]] = piece;
       }
     }
-    this.squares = squares;
-    this.squares_last_updated++;
+
+    return squares;
   }
 
   getSquare(coord) {
-    this.updateSquares();
-    return this.squares[coord[0]][coord[1]];
+    const squares = this.getSquares();
+    return squares[coord[0]][coord[1]];
   }
 
   getBoardString() {
@@ -135,7 +137,6 @@ class Board {
 
   setup() {
     this.setupPieces();
-    this.updateSquares();
     this.history.push(this.getBoardString());
   }
 
@@ -180,7 +181,6 @@ class Board {
     }
 
     const piece = this.getSquare(from_square);
-    console.log(piece);
 
     return this._doMove(new Move(piece, to_square, false));
   }
@@ -198,7 +198,7 @@ class Board {
     if (piece_name == "b") {
       piece = new Bishop(to_square, side);
     }
-    if (piece_name == "p") {
+    if (piece_name == Pawn._name) {
       piece = new Pawn(to_square, side);
     }
     if (piece_name == "k") {
@@ -207,7 +207,6 @@ class Board {
     if (piece_name == "r") {
       piece = new Rook(to_square, side);
     }
-    console.log(piece);
 
     return this._doMove(new Move(piece, to_square, true));
   }
@@ -222,8 +221,13 @@ class Board {
       return -1;
     }
 
-    const taken_piece = this.getSquare(move.coordinate);
-
+    const piece_on_target_square = this.getSquare(move.coordinate);
+    const try_en_passant = piece_on_target_square == this.empty && move.piece.name == Pawn._name && move.coordinate[0] != move.piece.coordinate[0];
+    const taken_piece =
+      try_en_passant
+        ? move.piece.pieceTakenByEnPassant(this, move.coordinate)
+        : piece_on_target_square;
+    
     if (taken_piece.side == move.piece.side) {
       console.log("Friendly fire :(");
       return -1;
@@ -244,7 +248,7 @@ class Board {
         return -1;
       }
 
-      if (move.piece.name == "p") {
+      if (move.piece.name == Pawn._name) {
         // pawn
         const vector = coordDiff(move.coordinate, move.piece.coordinate);
 
@@ -351,7 +355,7 @@ class Board {
       move.piece.coordinate = move.coordinate;
 
       if (
-        move.piece.name == "p" &&
+        move.piece.name == Pawn._name &&
         (move.piece.coordinate[1] == 0 || move.piece.coordinate[1] == 7)
       ) {
         this.pieces[+this.whose_turn] = this.pieces[+this.whose_turn].filter(
@@ -370,13 +374,12 @@ class Board {
     }
 
     this.num_turns++;
-    this.updateSquares();
     this.history.push(this.getBoardString());
     this.whose_turn = !this.whose_turn;
     return taken_piece;
   }
+
   print() {
-    this.updateSquares();
     console.log(this.extra_pieces[0]);
     const b = this.getBoardString();
     let out = "";
@@ -441,7 +444,9 @@ class Bughouse {
     }
 
     if (out.name != "-") {
-      const extra_idx = Board.bug_order.search(out.was_pawn ? "p" : out.name);
+      const extra_idx = Board.bug_order.search(
+        out.was_pawn ? Pawn._name : out.name
+      );
       if (extra_idx != -1) {
         this.boards[+!board_id].extra_pieces[+!side][extra_idx]++;
       }
@@ -449,13 +454,16 @@ class Bughouse {
 
     return true;
   }
+
   isOver() {
     return false;
   }
+
   print() {
     this.boards[0].print();
     this.boards[1].print();
   }
+
   getBugs() {
     return [
       this.boards[0].extra_pieces[0],
@@ -474,15 +482,16 @@ class Bughouse {
   }
 
   serialize() {
-    // TODO: return a string that can be parsed with deserialize() into the same thing
-    return "";
+    return JSON.stringify(this.boards);
   }
 
   deserialize(serialization) {
-    // TODO: parse the serialization and update the state
+    const b = JSON.parse(serialization);
+    const d = b.map(Board.deserialize);
+    this.boards = d;
   }
 
-  getBoardDicts() {
+    getBoardDicts() {
     return [this.boards[0].getDict(), this.boards[1].getDict()];
   }
 }
@@ -516,6 +525,16 @@ class Pawn extends Piece {
     // En pasant
 
     return false;
+  }
+
+  pieceTakenByEnPassant(board, coordinate) {
+    const sign = this.side ? 1 : -1;
+    const targetCoordinate = [
+      coordinate[0],
+      coordinate[1] + sign,
+    ];
+
+    return board.getSquare(targetCoordinate);
   }
 }
 
@@ -581,6 +600,16 @@ class Knight extends Piece {
     const smaller = Math.min(Math.abs(vector[0]), Math.abs(vector[1]));
     return larger == 2 && smaller == 1;
   }
+}
+
+
+const NAME_TO_PIECE = {
+  [Pawn._name]: Pawn,
+  [King._name]: King,
+  [Queen._name]: Queen,
+  [Rook._name]: Rook,
+  [Bishop._name]: Bishop,
+  [Knight._name]: Knight,
 }
 
 class Clock {

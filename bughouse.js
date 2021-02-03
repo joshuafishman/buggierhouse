@@ -211,7 +211,7 @@ class Board {
     if (piece_name == Pawn._name && to_square[1] != 0 && to_square[1] != 7) {
       piece = new Pawn(to_square, side);
     }
-    if (piece_name == "k") {
+    if (piece_name == Knight._name) {
       piece = new Knight(to_square, side);
     }
     if (piece_name == "r") {

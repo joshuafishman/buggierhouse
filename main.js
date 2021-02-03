@@ -123,7 +123,7 @@ function handle_message(event) {
   } else if (data["msg"] == "game_over") {
     const msg = data["victory_msg"];
 
-    new Audio("sound/win.mp3").play();
+    // new Audio("sound/win.mp3").play();
 
     alert(`Game over!\n${msg}`);
     start_game();

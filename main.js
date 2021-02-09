@@ -162,7 +162,9 @@ function handle_message(event) {
   } else if (data["msg"] == "sync" && isNaN(window.game)) {
     window.pool_param = data["pool"];
     window.inc_param = data["inc"];
-    start_game();
+    if (!window.game) {
+      start_game();
+    }
 
     window.game.deserialize(data["serialization"]);
     window.clock.clocks = data["clocks"];
@@ -231,6 +233,9 @@ function we_won_the_game() {
   if (victory_message == null)
     victory_message = `Team ${1 + (window.player >= 2)} won!`;
   send_msg("game_over", { victory_msg: victory_message });
+
+
+  while (!confirm("Start new game?")){}
 
   start_game();
 }

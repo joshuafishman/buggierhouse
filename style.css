@@ -1,6 +1,7 @@
 body, html, #play_screen {
     height:100%;
     font-family: 'Times New Roman', Times, serif;
+    overflow:hidden;
 }
 
 #my_screen {

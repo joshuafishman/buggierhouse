@@ -1039,7 +1039,9 @@ function we_won_the_game() {
     victory_message = `Team ${1 + (window.player >= 2)} won!`;
   send_msg("game_over", { victory_msg: victory_message });
 
-  while (!confirm("Start new game?")) start_game();
+  while (!confirm("Start new game?")) { };
+
+  start_game();
 }
 
 function start_game() {
@@ -1105,6 +1107,7 @@ function start_game() {
 
   window.their_board = Chessboard("their_board", {
     pieceTheme: "img/{piece}.png",
+    orientation: window.player % 2 == 0 ? "black" : "white",
   });
 
   window.my_board.start();

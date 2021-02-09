@@ -43,6 +43,7 @@ async def process_request(sever_root, path, request_headers):
     extension = full_path.split(".")[-1]
     mime_type = MIME_TYPES.get(extension, "application/octet-stream")
     response_headers.append(('Content-Type', mime_type))
+    response_headers.append(('Cache-Control', "max-age=604800"))
 
     # Read the whole file into memory and send it out
     body = open(full_path, 'rb').read()
